@@ -8,8 +8,8 @@ require("@nomiclabs/hardhat-etherscan");
 require("@openzeppelin/hardhat-upgrades");
 
 const ARBITRUM_GOERLI_RPC = process.env.ARBITRUM_GOERLI_RPC || "";
-const POLYGON_RPC_URL = process.env.POLYGON_RPC_URL || "";
-const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "";
+const ARBISCAN_RPC_URL = process.env.ARBISCAN_RPC_URL || "";
+const ARBISCAN_API_KEY = process.env.ARBISCAN_API_KEY || "";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 const REPORT_GAS = process.env.REPORT_GAS || true;
@@ -65,17 +65,7 @@ module.exports = {
     ],
   },
   etherscan: {
-    apiKey: { mumbai: POLYGONSCAN_API_KEY },
-    customChains: [
-      {
-        network: "mumbai",
-        chainId: 80001,
-        urls: {
-          apiURL: "https://api-mumbai.polygonscan.com/api",
-          browserURL: "https://mumbai.polygonscan.com/",
-        },
-      },
-    ],
+    apiKey: { mumbai: ARBISCAN_API_KEY },
   },
   mocha: {
     timeout: 200000, // 200 seconds max for running tests
