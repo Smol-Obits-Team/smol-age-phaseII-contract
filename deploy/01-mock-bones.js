@@ -2,13 +2,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const phaseII = await deploy("PhaseII", {
+  const bones = await deploy("Token", {
     from: deployer,
     args: [],
     log: true,
   });
 
-  log(`Phase two contract successfully deployed to ${phaseII.address}`);
+  log(`Mock Bones contract successfully deployed to ${bones.address}`);
 };
 
-module.exports.tags = ["all", "phase2"];
+module.exports.tags = ["all", "bones"];
