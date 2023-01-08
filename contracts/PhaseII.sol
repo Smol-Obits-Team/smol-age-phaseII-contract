@@ -2,7 +2,6 @@
 pragma solidity 0.8.17;
 
 import "hardhat/console.sol";
-import {Lib} from "./library/Lib.sol";
 import {IPits} from "./interfaces/IPits.sol";
 import {IToken} from "./interfaces/IToken.sol";
 import {INeandersmol} from "./interfaces/INeandersmol.sol";
@@ -96,16 +95,34 @@ contract PhaseII {
         );
     }
 
+    function stakeBonesInDevelopementGround(
+        uint256 _tokenId,
+        uint256 _amount
+    ) internal {
+        TokenInfo storage token = tokenInfo[_tokenId];
+        uint256 newAmount;
+        uint256 remainder = _amount % MINIMUM_BONE_STAKE;
+        if (_amount % MINIMUM_BONE_STAKE == _amount) return;
+        if (remainder != 0) {
+            newAmount = _amount - remainder;
+            bones.mint(msg.sender, remainder * TO_WEI);
+            bones.mint(address(this), newAmount * TO_WEI);
+        } else {
+            newAmount = _amount;
+            bones.mint(address(this), newAmount * TO_WEI);
+        }
+
+        updateTokenInfo(token, _tokenId, newAmount);
+    }
+
     function stakeBonesInDevGround(uint256 _amount, uint256 _tokenId) public {
         // require(pits.validation())
         TokenInfo storage token = tokenInfo[_tokenId];
-        require(token.owner == msg.sender);
-        require(_amount % MINIMUM_BONE_STAKE == 0);
-        require(bones.balanceOf(msg.sender) >= _amount);
+        require(token.owner == msg.sender, "NOT_YOURS");
+        require(_amount % MINIMUM_BONE_STAKE == 0, "WRONG_MULTIPLE");
+        require(bones.balanceOf(msg.sender) >= _amount, "LOW_BALANCE");
         bones.transferFrom(msg.sender, address(this), _amount * TO_WEI);
-        token.bonesStaked += _amount;
-        token.stakedAmount.push(_amount);
-        trackTime[_tokenId][token.stakedAmount.length - 1] = block.timestamp;
+        updateTokenInfo(token, _tokenId, _amount);
     }
 
     function leaveDevelopmentGround(uint256 _tokenId) external {
@@ -123,10 +140,9 @@ contract PhaseII {
         uint256 length = token.stakedAmount.length;
         for (uint256 i; i < length; ++i) {
             uint256 time = trackTime[_tokenId][i];
+            if (block.timestamp < time + 30 days && !_all) continue;
             if (block.timestamp < time + 30 days && _all)
                 amount += token.stakedAmount[i] / 2;
-
-            if (block.timestamp < time + 30 days && !_all) continue;
 
             amount += token.stakedAmount[i];
 
@@ -163,7 +179,7 @@ contract PhaseII {
             uint256 time = (block.timestamp - trackTime[_tokenId][i]) / 1 days;
             amount +=
                 (INCREASE_RATE * time * token.stakedAmount[i] * TO_WEI) /
-                10000;
+                1000;
         }
 
         return amount;
@@ -185,7 +201,19 @@ contract PhaseII {
         require(token.owner == msg.sender);
         uint256 reward = getReward(_tokenId);
         tokenInfo[_tokenId].lastRewardTime = block.timestamp;
-        _stake ? stakeBonesInDevGround(reward, _tokenId) : bones.mint(reward);
+        _stake
+            ? stakeBonesInDevelopementGround(_tokenId, reward)
+            : bones.mint(msg.sender, reward);
+    }
+
+    function updateTokenInfo(
+        TokenInfo storage _token,
+        uint256 _tokenId,
+        uint256 _amount
+    ) internal {
+        _token.bonesStaked += _amount;
+        _token.stakedAmount.push(_amount);
+        trackTime[_tokenId][_token.stakedAmount.length - 1] = block.timestamp;
     }
 
     // This could also be in a library
@@ -204,5 +232,11 @@ contract PhaseII {
             _lockTime == 50 days ||
             _lockTime == 100 days ||
             _lockTime == 150 days;
+    }
+
+    function getTokenInfo(
+        uint256 _tokenId
+    ) external view returns (TokenInfo memory) {
+        return tokenInfo[_tokenId];
     }
 }
