@@ -43,7 +43,6 @@ describe("test phase two", () => {
   });
   it("stake bones and develop skill", async () => {
     await phaseII.enterDevelopmentGround(1, 50 * 24 * 60 * 60, 1);
-    await increaseTime(24 * 120);
     await bones.approve(phaseII.address, toWei("2000"));
     await phaseII.stakeBonesInDevGround(1000, 1);
     await increaseTime(1);
@@ -52,5 +51,14 @@ describe("test phase two", () => {
     expect(await phaseII.calculatePrimarySkill(1)).to.equal(toWei("1"));
     await increaseTime(1);
     expect(await phaseII.calculatePrimarySkill(1)).to.equal(toWei("2"));
+  });
+  it("remove bones", async () => {
+    await phaseII.enterDevelopmentGround(1, 50 * 24 * 60 * 60, 1);
+    await bones.approve(phaseII.address, toWei("2000"));
+    await phaseII.stakeBonesInDevGround(1000, 1);
+    await increaseTime(1);
+    await phaseII.stakeBonesInDevGround(1000, 1);
+    await increaseTime(24*30);
+    await phaseII.removeBones(1, true);
   });
 });

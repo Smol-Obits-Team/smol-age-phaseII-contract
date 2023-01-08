@@ -38,7 +38,7 @@ contract PhaseII {
         uint256 lockPeriod;
         uint256 lastRewardTime;
         uint256 bonesStaked;
-        uint256[] stakedAmount;
+        uint256 amountPosition;
         Grounds ground;
     }
 
@@ -52,7 +52,8 @@ contract PhaseII {
     // 2000 staked
     // 7:00 pm -> 8:00 pm
 
-    mapping(uint256 => mapping(uint256 => uint256)) private tokenTiming;
+    // tokenId -> time -> amount
+    mapping(uint256 => mapping(uint256 => uint256)) private trackToken;
 
     mapping(uint256 => TokenInfo) private tokenInfo;
 
@@ -90,7 +91,7 @@ contract PhaseII {
             _lockTime,
             block.timestamp,
             0,
-            new uint256[](0),
+            0,
             _ground
         );
     }
@@ -137,22 +138,42 @@ contract PhaseII {
     function removeBones(uint256 _tokenId, bool _all) public {
         TokenInfo memory token = tokenInfo[_tokenId];
         uint256 amount;
-        uint256 length = token.stakedAmount.length;
-        for (uint256 i; i < length; ++i) {
+        uint256 length = token.amountPosition;
+        uint256 count;
+        console.log("The length is", length);
+        for (uint256 i = 1; i <= length; ++i) {
+            // uint256 half = token.stakedAmount[i] / 2;
             uint256 time = trackTime[_tokenId][i];
+            uint256 prev = trackTime[_tokenId][i + 1];
             if (block.timestamp < time + 30 days && !_all) continue;
-            if (block.timestamp < time + 30 days && _all)
-                amount += token.stakedAmount[i] / 2;
+            block.timestamp < time + 30 days && _all
+                ? amount += trackToken[_tokenId][time] / 2
+                : amount += trackToken[_tokenId][time];
 
-            amount += token.stakedAmount[i];
-
-            tokenInfo[_tokenId].stakedAmount[i] = token.stakedAmount[
-                length - 1
-            ];
-            tokenInfo[_tokenId].stakedAmount.pop();
-            break;
+            // 1000 - 1
+            // 1000 - 2 remove this -> trackTime[_tokenId][2] = 0
+            // 1000 - 3 remove this -> trackTime[_tokenId][3] = this time
+            // 1000 - 4 takes this time
+            // 1000 - 5
+            /**
+             * uint prev = trackTime[_tokenId][i+1];
+             * trackTime[_tokenId][i] = prev
+             */
+            _all ? trackTime[_tokenId][i] = 0 : trackTime[_tokenId][i] = prev;
+            trackToken[_tokenId][time] = 0;
+            ++count;
         }
-        tokenInfo[_tokenId].bonesStaked -= amount;
+
+        tokenInfo[_tokenId].amountPosition -= count;
+
+        if (_all) {
+            tokenInfo[_tokenId].bonesStaked = 0;
+            if (token.bonesStaked - amount != 0)
+                require(bones.transfer(address(1), token.bonesStaked - amount)); // change the address(1)
+        } else {
+            tokenInfo[_tokenId].bonesStaked -= amount;
+        }
+        console.log(amount);
         require(bones.transfer(msg.sender, amount));
     }
 
@@ -173,15 +194,12 @@ contract PhaseII {
         uint256 _tokenId
     ) public view returns (uint256) {
         TokenInfo memory token = tokenInfo[_tokenId];
-
         uint256 amount;
-        for (uint256 i; i < token.stakedAmount.length; ++i) {
+        for (uint256 i = 1; i <= token.amountPosition; ++i) {
             uint256 time = (block.timestamp - trackTime[_tokenId][i]) / 1 days;
-            amount +=
-                (INCREASE_RATE * time * token.stakedAmount[i] * TO_WEI) /
-                1000;
+            uint256 stakedAmount = trackToken[_tokenId][trackTime[_tokenId][i]];
+            amount += (INCREASE_RATE * time * stakedAmount * TO_WEI) / 1000;
         }
-
         return amount;
     }
 
@@ -212,8 +230,9 @@ contract PhaseII {
         uint256 _amount
     ) internal {
         _token.bonesStaked += _amount;
-        _token.stakedAmount.push(_amount);
-        trackTime[_tokenId][_token.stakedAmount.length - 1] = block.timestamp;
+        ++_token.amountPosition;
+        trackToken[_tokenId][block.timestamp] = _amount;
+        trackTime[_tokenId][_token.amountPosition] = block.timestamp;
     }
 
     // This could also be in a library
