@@ -43,7 +43,7 @@ contract PhaseII {
     }
 
     // tokenId -> amount position -> staking time
-    mapping(uint256 => mapping(uint256 => uint256)) private trackTime;
+    mapping(uint256 => mapping(uint256 => uint256)) public trackTime;
 
     // tokenId -> timestamp
     // 1000 staked at 1:00pm -> 7:00 pm
@@ -53,7 +53,7 @@ contract PhaseII {
     // 7:00 pm -> 8:00 pm
 
     // tokenId -> time -> amount
-    mapping(uint256 => mapping(uint256 => uint256)) private trackToken;
+    mapping(uint256 => mapping(uint256 => uint256)) public trackToken;
 
     mapping(uint256 => TokenInfo) private tokenInfo;
 
@@ -80,20 +80,18 @@ contract PhaseII {
         uint256 _lockTime,
         Grounds _ground
     ) external {
+        TokenInfo storage token = tokenInfo[_tokenId];
         // require(neandersmol.getCommonSense(_tokenId) >= 100);
         // check that the bones staked is greater than 50% of the ts
         // require(pits.validation())
+        require(neandersmol.ownerOf(_tokenId) == msg.sender);
         require(lockTimeExists(_lockTime));
         neandersmol.transferFrom(msg.sender, address(this), _tokenId);
-        tokenInfo[_tokenId] = TokenInfo(
-            msg.sender,
-            block.timestamp,
-            _lockTime,
-            block.timestamp,
-            0,
-            0,
-            _ground
-        );
+        token.owner = msg.sender;
+        token.lockTime = block.timestamp;
+        token.lockPeriod = _lockTime;
+        token.lastRewardTime = block.timestamp;
+        token.ground = _ground;
     }
 
     function stakeBonesInDevelopementGround(
@@ -119,30 +117,28 @@ contract PhaseII {
     function stakeBonesInDevGround(uint256 _amount, uint256 _tokenId) public {
         // require(pits.validation())
         TokenInfo storage token = tokenInfo[_tokenId];
-        require(token.owner == msg.sender, "NOT_YOURS");
-        require(_amount % MINIMUM_BONE_STAKE == 0, "WRONG_MULTIPLE");
-        require(bones.balanceOf(msg.sender) >= _amount, "LOW_BALANCE");
+        require(token.owner == msg.sender);
+        require(_amount % MINIMUM_BONE_STAKE == 0);
+        require(bones.balanceOf(msg.sender) >= _amount);
         bones.transferFrom(msg.sender, address(this), _amount * TO_WEI);
         updateTokenInfo(token, _tokenId, _amount);
     }
 
     function leaveDevelopmentGround(uint256 _tokenId) external {
         TokenInfo memory token = tokenInfo[_tokenId];
+        require(block.timestamp > token.lockTime + token.lockPeriod);
         require(token.owner == msg.sender);
+        developPrimarySkill(_tokenId);
         removeBones(_tokenId, true);
         delete tokenInfo[_tokenId];
-        developPrimarySkill(_tokenId);
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
     }
 
     function removeBones(uint256 _tokenId, bool _all) public {
         TokenInfo memory token = tokenInfo[_tokenId];
         uint256 amount;
-        uint256 length = token.amountPosition;
         uint256 count;
-        console.log("The length is", length);
-        for (uint256 i = 1; i <= length; ++i) {
-            // uint256 half = token.stakedAmount[i] / 2;
+        for (uint256 i = 1; i <= token.amountPosition; ++i) {
             uint256 time = trackTime[_tokenId][i];
             uint256 prev = trackTime[_tokenId][i + 1];
             if (block.timestamp < time + 30 days && !_all) continue;
@@ -159,7 +155,9 @@ contract PhaseII {
              * uint prev = trackTime[_tokenId][i+1];
              * trackTime[_tokenId][i] = prev
              */
-            _all ? trackTime[_tokenId][i] = 0 : trackTime[_tokenId][i] = prev;
+            _all || token.amountPosition == 1
+                ? trackTime[_tokenId][i] = 0
+                : trackTime[_tokenId][i] = prev;
             trackToken[_tokenId][time] = 0;
             ++count;
         }
@@ -175,7 +173,11 @@ contract PhaseII {
         }
         console.log(amount);
         require(bones.transfer(msg.sender, amount));
+
+        emit RemoveBones(msg.sender, _tokenId, amount);
     }
+
+    event RemoveBones(address owner, uint256 tokenId, uint256 amount);
 
     function developPrimarySkill(uint256 _tokenId) internal {
         TokenInfo memory token = tokenInfo[_tokenId];
@@ -221,7 +223,7 @@ contract PhaseII {
         tokenInfo[_tokenId].lastRewardTime = block.timestamp;
         _stake
             ? stakeBonesInDevelopementGround(_tokenId, reward)
-            : bones.mint(msg.sender, reward);
+            : bones.mint(msg.sender, reward * TO_WEI);
     }
 
     function updateTokenInfo(
