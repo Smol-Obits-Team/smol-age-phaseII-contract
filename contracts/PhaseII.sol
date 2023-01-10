@@ -45,13 +45,6 @@ contract PhaseII {
     // tokenId -> amount position -> staking time
     mapping(uint256 => mapping(uint256 => uint256)) public trackTime;
 
-    // tokenId -> timestamp
-    // 1000 staked at 1:00pm -> 7:00 pm
-    //
-    // 1000 staked at 2:00pm -> 8:00pm
-    // 2000 staked
-    // 7:00 pm -> 8:00 pm
-
     // tokenId -> time -> amount
     mapping(uint256 => mapping(uint256 => uint256)) public trackToken;
 
@@ -139,12 +132,14 @@ contract PhaseII {
         uint256 amount;
         uint256 count;
         for (uint256 i = 1; i <= token.amountPosition; ++i) {
+            developPrimarySkill(_tokenId);
             uint256 time = trackTime[_tokenId][i];
             uint256 prev = trackTime[_tokenId][i + 1];
             if (block.timestamp < time + 30 days && !_all) continue;
             block.timestamp < time + 30 days && _all
                 ? amount += trackToken[_tokenId][time] / 2
                 : amount += trackToken[_tokenId][time];
+            
 
             // 1000 - 1
             // 1000 - 2 remove this -> trackTime[_tokenId][2] = 0
