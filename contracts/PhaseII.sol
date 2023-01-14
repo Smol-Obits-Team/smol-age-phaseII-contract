@@ -5,20 +5,21 @@ import "hardhat/console.sol";
 import {IPits} from "./interfaces/IPits.sol";
 import {IToken} from "./interfaces/IToken.sol";
 import {INeandersmol} from "./interfaces/INeandersmol.sol";
-
-/**
- * Development Ground - Skilled Neandersmol i.e cs >= 100
- * -The chamber - Mystics
- * -The Garden - Farmers
- * -The Battlefield - Fighters
- * Labor Ground
- * The Caverns
- */
+import {IConsumables, IERC1155} from "./interfaces/IConsumables.sol";
 
 contract PhaseII {
-    IToken bones;
     IPits pits;
+    IToken bones;
+    IERC1155 animals;
+    IERC1155 supplies;
+    IConsumables consumables;
     INeandersmol neandersmol;
+
+    enum Job {
+        Digging,
+        Foraging,
+        Mining
+    }
 
     enum Grounds {
         Chambers,
@@ -32,7 +33,7 @@ contract PhaseII {
 
     uint256 private constant MINIMUM_BONE_STAKE = 1000;
 
-    struct TokenInfo {
+    struct DevelopmentGround {
         address owner;
         uint256 lockTime;
         uint256 lockPeriod;
@@ -42,29 +43,25 @@ contract PhaseII {
         Grounds ground;
     }
 
+    struct LaborGround {
+        address owner;
+        uint256 lockTime;
+    }
+
+    mapping(uint256 => LaborGround) public laborGround;
+
     // tokenId -> amount position -> staking time
     mapping(uint256 => mapping(uint256 => uint256)) public trackTime;
 
     // tokenId -> time -> amount
     mapping(uint256 => mapping(uint256 => uint256)) public trackToken;
 
-    mapping(uint256 => TokenInfo) private tokenInfo;
+    mapping(uint256 => DevelopmentGround) private developmentGround;
 
     constructor(address _neandersmol, address _bones) {
         bones = IToken(_bones);
         neandersmol = INeandersmol(_neandersmol);
     }
-
-    /*
-     * Development Ground - Skilled Neandersmol i.e cs >= 100
-     * -The chamber - Mystics
-     * -The Garden - Farmers
-     * -The Battlefield - Fighters
-     * stake smols in chamber, garden or battlefield
-     * calculate the bones earn
-     * stake bones in chamber, garden or battlefield
-     * boost it primary skills
-     */
 
     /// @notice this function only works for skilled Neandersmols
 
@@ -73,7 +70,7 @@ contract PhaseII {
         uint256 _lockTime,
         Grounds _ground
     ) external {
-        TokenInfo storage token = tokenInfo[_tokenId];
+        DevelopmentGround storage token = developmentGround[_tokenId];
         // require(neandersmol.getCommonSense(_tokenId) >= 100);
         // check that the bones staked is greater than 50% of the ts
         // require(pits.validation())
@@ -91,10 +88,10 @@ contract PhaseII {
         uint256 _tokenId,
         uint256 _amount
     ) internal {
-        TokenInfo storage token = tokenInfo[_tokenId];
+        DevelopmentGround storage token = developmentGround[_tokenId];
         uint256 newAmount;
         uint256 remainder = _amount % MINIMUM_BONE_STAKE;
-        if (_amount % MINIMUM_BONE_STAKE == _amount) return;
+        if (remainder == _amount) return;
         if (remainder != 0) {
             newAmount = _amount - remainder;
             bones.mint(msg.sender, remainder * TO_WEI);
@@ -104,34 +101,33 @@ contract PhaseII {
             bones.mint(address(this), newAmount * TO_WEI);
         }
 
-        updateTokenInfo(token, _tokenId, newAmount);
+        updateDevelopmentGround(token, _tokenId, newAmount);
     }
 
     function stakeBonesInDevGround(uint256 _amount, uint256 _tokenId) public {
         // require(pits.validation())
-        TokenInfo storage token = tokenInfo[_tokenId];
+        DevelopmentGround storage token = developmentGround[_tokenId];
+        require(bones.balanceOf(msg.sender) >= _amount);
         require(token.owner == msg.sender);
         require(_amount % MINIMUM_BONE_STAKE == 0);
-        require(bones.balanceOf(msg.sender) >= _amount);
         bones.transferFrom(msg.sender, address(this), _amount * TO_WEI);
-        updateTokenInfo(token, _tokenId, _amount);
+        updateDevelopmentGround(token, _tokenId, _amount);
     }
 
     function leaveDevelopmentGround(uint256 _tokenId) external {
-        TokenInfo memory token = tokenInfo[_tokenId];
+        DevelopmentGround memory token = developmentGround[_tokenId];
         require(block.timestamp > token.lockTime + token.lockPeriod);
         require(token.owner == msg.sender);
-        developPrimarySkill(_tokenId);
         removeBones(_tokenId, true);
-        delete tokenInfo[_tokenId];
+        delete developmentGround[_tokenId];
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
     }
 
     function removeBones(uint256 _tokenId, bool _all) public {
-        TokenInfo memory token = tokenInfo[_tokenId];
+        DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 amount;
         uint256 count;
-        for (uint256 i = 1; i <= token.amountPosition; ++i) {
+        for (uint256 i = 1; i <= token.amountPosition; ) {
             developPrimarySkill(_tokenId);
             uint256 time = trackTime[_tokenId][i];
             uint256 prev = trackTime[_tokenId][i + 1];
@@ -139,7 +135,6 @@ contract PhaseII {
             block.timestamp < time + 30 days && _all
                 ? amount += trackToken[_tokenId][time] / 2
                 : amount += trackToken[_tokenId][time];
-            
 
             // 1000 - 1
             // 1000 - 2 remove this -> trackTime[_tokenId][2] = 0
@@ -154,19 +149,22 @@ contract PhaseII {
                 ? trackTime[_tokenId][i] = 0
                 : trackTime[_tokenId][i] = prev;
             trackToken[_tokenId][time] = 0;
-            ++count;
+            unchecked {
+                ++count;
+                ++i;
+            }
         }
 
-        tokenInfo[_tokenId].amountPosition -= count;
+        developmentGround[_tokenId].amountPosition -= count;
 
         if (_all) {
-            tokenInfo[_tokenId].bonesStaked = 0;
+            developmentGround[_tokenId].bonesStaked = 0;
             if (token.bonesStaked - amount != 0)
                 require(bones.transfer(address(1), token.bonesStaked - amount)); // change the address(1)
         } else {
-            tokenInfo[_tokenId].bonesStaked -= amount;
+            developmentGround[_tokenId].bonesStaked -= amount;
         }
-        console.log(amount);
+
         require(bones.transfer(msg.sender, amount));
 
         emit RemoveBones(msg.sender, _tokenId, amount);
@@ -175,7 +173,8 @@ contract PhaseII {
     event RemoveBones(address owner, uint256 tokenId, uint256 amount);
 
     function developPrimarySkill(uint256 _tokenId) internal {
-        TokenInfo memory token = tokenInfo[_tokenId];
+        // make sure bones staked is more than 50% the total supply
+        DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 amount = calculatePrimarySkill(_tokenId);
         Grounds ground = token.ground;
         if (ground == Grounds.Chambers) {
@@ -190,12 +189,16 @@ contract PhaseII {
     function calculatePrimarySkill(
         uint256 _tokenId
     ) public view returns (uint256) {
-        TokenInfo memory token = tokenInfo[_tokenId];
+        // make sure bones staked is more than 50% the total supply
+        DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 amount;
-        for (uint256 i = 1; i <= token.amountPosition; ++i) {
+        for (uint256 i = 1; i <= token.amountPosition; ) {
             uint256 time = (block.timestamp - trackTime[_tokenId][i]) / 1 days;
             uint256 stakedAmount = trackToken[_tokenId][trackTime[_tokenId][i]];
             amount += (INCREASE_RATE * time * stakedAmount * TO_WEI) / 1000;
+            unchecked {
+                ++i;
+            }
         }
         return amount;
     }
@@ -205,24 +208,24 @@ contract PhaseII {
      */
 
     function getReward(uint256 _tokenId) public view returns (uint256) {
-        TokenInfo memory token = tokenInfo[_tokenId];
+        DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 rewardRate = getRewardRate(token.lockPeriod);
         uint256 time = (block.timestamp - token.lastRewardTime) / 1 days;
         return rewardRate * time;
     }
 
     function claimReward(uint256 _tokenId, bool _stake) public {
-        TokenInfo memory token = tokenInfo[_tokenId];
+        DevelopmentGround memory token = developmentGround[_tokenId];
         require(token.owner == msg.sender);
         uint256 reward = getReward(_tokenId);
-        tokenInfo[_tokenId].lastRewardTime = block.timestamp;
+        developmentGround[_tokenId].lastRewardTime = block.timestamp;
         _stake
             ? stakeBonesInDevelopementGround(_tokenId, reward)
             : bones.mint(msg.sender, reward * TO_WEI);
     }
 
-    function updateTokenInfo(
-        TokenInfo storage _token,
+    function updateDevelopmentGround(
+        DevelopmentGround storage _token,
         uint256 _tokenId,
         uint256 _amount
     ) internal {
@@ -230,6 +233,71 @@ contract PhaseII {
         ++_token.amountPosition;
         trackToken[_tokenId][block.timestamp] = _amount;
         trackTime[_tokenId][_token.amountPosition] = block.timestamp;
+    }
+
+    // put a check for the common sense < 100
+    // a function to leave labour ground
+    // a function to generate random number ✅
+    // a function to allow the owner of the token collect it consumbles
+    function enterLaborGround(
+        uint256 _tokenId,
+        uint256 _suppliesId,
+        Job _job
+    ) external {
+        require(neandersmol.ownerOf(_tokenId) == msg.sender);
+        require(validateTokenId(_suppliesId, _job));
+        supplies.safeTransferFrom(
+            msg.sender,
+            address(this),
+            _suppliesId,
+            1,
+            ""
+        );
+        laborGround[_tokenId] = LaborGround(msg.sender, block.timestamp);
+    }
+
+    // 0 => got nothing
+    // 1 - 3 => common
+    // 4 - 6 rare
+    // 7 break their supply
+    function claimCollectables(uint256 _tokenId) public {
+        LaborGround memory labor = laborGround[_tokenId];
+        require(msg.sender == labor.owner);
+        require(block.timestamp > labor.lockTime + 3 days);
+        uint256 tokenId = getRandom(10);
+        if (tokenId == 0) return;
+        if (tokenId > 6) return; // break supply
+        consumables.mint(msg.sender, tokenId, 1);
+    }
+
+    function leaveLaborGround(uint256 _tokenId) external {
+        claimCollectables(_tokenId);
+        delete laborGround[_tokenId];
+        supplies.safeTransferFrom(address(this), msg.sender, 1, 1, "");
+    }
+
+    function validateTokenId(
+        uint256 _tokenId,
+        Job _job
+    ) internal pure returns (bool res) {
+        if (_job == Job.Digging) return _tokenId == 0;
+        if (_job == Job.Foraging) return _tokenId == 1;
+        if (_job == Job.Mining) return _tokenId == 2;
+    }
+
+    // @remind use a better solution than this
+    function getRandom(uint256 _num) internal view returns (uint256) {
+        return
+            uint256(
+                keccak256(
+                    abi.encode(
+                        msg.sender,
+                        block.number,
+                        block.timestamp,
+                        block.coinbase
+                    )
+                )
+            ) % _num;
     }
 
     // This could also be in a library
@@ -250,9 +318,9 @@ contract PhaseII {
             _lockTime == 150 days;
     }
 
-    function getTokenInfo(
+    function getDevelopmentGroundInfo(
         uint256 _tokenId
-    ) external view returns (TokenInfo memory) {
-        return tokenInfo[_tokenId];
+    ) external view returns (DevelopmentGround memory) {
+        return developmentGround[_tokenId];
     }
 }

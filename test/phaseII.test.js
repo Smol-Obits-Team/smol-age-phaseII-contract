@@ -28,7 +28,7 @@ describe("test phase two", () => {
   it("enter development ground", async () => {
     await expect(phaseII.enterDevelopmentGround(1, 23, 1)).to.be.reverted;
     await phaseII.enterDevelopmentGround(1, 50 * 24 * 60 * 60, 1);
-    const tokenInfo = await phaseII.getTokenInfo(1);
+    const tokenInfo = await phaseII.getDevelopmentGroundInfo(1);
     expect(tokenInfo.owner).to.equal(owner.address);
   });
   it("get bones accumulated", async () => {
@@ -44,7 +44,7 @@ describe("test phase two", () => {
     expect(await bones.balanceOf(owner.address)).to.equal(
       toWei((INITIAL_SUPPLY + 200).toString())
     );
-    expect((await phaseII.getTokenInfo(1)).bonesStaked).to.equal("1000");
+    expect((await phaseII.getDevelopmentGroundInfo(1)).bonesStaked).to.equal("1000");
     await increaseTime(24 * 100);
     await phaseII.claimReward(1, true);
     expect(await bones.balanceOf(phaseII.address)).to.equal(toWei("2000"));
@@ -73,16 +73,16 @@ describe("test phase two", () => {
     await phaseII.removeBones(1, true);
     expect(await phaseII.trackTime(1, 1)).to.equal("0");
     await phaseII.stakeBonesInDevGround(1000, 1);
-    expect((await phaseII.getTokenInfo(1)).amountPosition).to.equal("1");
+    expect((await phaseII.getDevelopmentGroundInfo(1)).amountPosition).to.equal("1");
     await increaseTime(24);
     await phaseII.stakeBonesInDevGround(1000, 1);
-    expect((await phaseII.getTokenInfo(1)).amountPosition).to.equal("2");
+    expect((await phaseII.getDevelopmentGroundInfo(1)).amountPosition).to.equal("2");
     const secondTime = await phaseII.trackTime(1, 2);
     await increaseTime(24 * 29);
     await phaseII.removeBones(1, false);
     expect(await phaseII.trackTime(1, 1)).to.equal(secondTime.toString());
-    expect((await phaseII.getTokenInfo(1)).bonesStaked).to.equal("1000");
-    expect((await phaseII.getTokenInfo(1)).amountPosition).to.equal("1");
+    expect((await phaseII.getDevelopmentGroundInfo(1)).bonesStaked).to.equal("1000");
+    expect((await phaseII.getDevelopmentGroundInfo(1)).amountPosition).to.equal("1");
   });
   it("leave development ground", async () => {
     await phaseII.enterDevelopmentGround(1, 50 * 24 * 60 * 60, 0);
