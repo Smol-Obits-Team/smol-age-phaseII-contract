@@ -4,16 +4,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const nft = await ethers.getContract("mERC721");
   const bones = await ethers.getContract("Token");
 
-  const phaseII = await deploy("PhaseII", {
+  const pits = await deploy("Pits", {
     from: deployer,
-    args: [nft.address, bones.address],
+    args: [bones.address],
     log: true,
   });
 
-  log(`Phase two contract successfully deployed to ${phaseII.address}`);
+  log(`Pits contract successfully deployed to ${pits.address}`);
 };
 
-module.exports.tags = ["all", "phase2"];
+module.exports.tags = ["all", "pits"];

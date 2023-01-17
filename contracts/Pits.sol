@@ -34,6 +34,6 @@ contract Pits {
     }
 
     function validation() external view returns (bool) {
-        return bonesStaked * TO_WEI >= bones.totalSupply() / 2;
+        return bonesStaked * TO_WEI >= (bones.totalSupply() * 3) / 10;
     }
 }

@@ -15,7 +15,7 @@ contract PhaseII {
     IConsumables consumables;
     INeandersmol neandersmol;
 
-    enum Job {
+    enum Jobs {
         Digging,
         Foraging,
         Mining
@@ -33,6 +33,17 @@ contract PhaseII {
 
     uint256 private constant MINIMUM_BONE_STAKE = 1000;
 
+    /**
+     * Things left to do
+     * enter the tokenIds with arrays
+     * enter and emit events
+     * check if all the times are updted as they should be
+     * correct the amount of primary skill earned to 0.1 ~ 1
+     * pack the structs
+     * remove all the unnecassary comments
+     * create a new branch and make that one for the upgradable contracts
+     */
+
     struct DevelopmentGround {
         address owner;
         uint256 lockTime;
@@ -46,7 +57,18 @@ contract PhaseII {
     struct LaborGround {
         address owner;
         uint256 lockTime;
+        uint256 supplyId;
+        uint256 animalId;
+        Jobs job;
     }
+
+    struct Caves {
+        address owner;
+        uint256 stakingTime;
+        uint256 unclaimedReward;
+    }
+
+    mapping(uint256 => Caves) private caves;
 
     mapping(uint256 => LaborGround) public laborGround;
 
@@ -58,30 +80,50 @@ contract PhaseII {
 
     mapping(uint256 => DevelopmentGround) private developmentGround;
 
-    constructor(address _neandersmol, address _bones) {
+    constructor(
+        address _pits,
+        address _bones,
+        address _animals,
+        address _supplies,
+        address _consumables,
+        address _neandersmol
+    ) {
         bones = IToken(_bones);
+        animals = IERC1155(_animals);
+        pits = IPits(_pits);
+        supplies = IERC1155(_supplies);
+        consumables = IConsumables(_consumables);
         neandersmol = INeandersmol(_neandersmol);
     }
 
     /// @notice this function only works for skilled Neandersmols
 
     function enterDevelopmentGround(
-        uint256 _tokenId,
-        uint256 _lockTime,
+        uint256[] calldata _tokenId,
+        uint256[] calldata _lockTime,
         Grounds _ground
     ) external {
-        DevelopmentGround storage token = developmentGround[_tokenId];
-        // require(neandersmol.getCommonSense(_tokenId) >= 100);
-        // check that the bones staked is greater than 50% of the ts
+        uint256 i;
+        require(_tokenId.length == _lockTime.length);
+        // check that the bones staked is greater than 30% of the ts
         // require(pits.validation())
-        require(neandersmol.ownerOf(_tokenId) == msg.sender);
-        require(lockTimeExists(_lockTime));
-        neandersmol.transferFrom(msg.sender, address(this), _tokenId);
-        token.owner = msg.sender;
-        token.lockTime = block.timestamp;
-        token.lockPeriod = _lockTime;
-        token.lastRewardTime = block.timestamp;
-        token.ground = _ground;
+        for (; i < _tokenId.length; ) {
+            (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
+            DevelopmentGround storage token = developmentGround[tokenId];
+            // require(neandersmol.getCommonSense(tokenId) >= 100);
+            require(neandersmol.ownerOf(tokenId) == msg.sender);
+            require(lockTimeExists(lockTime));
+            neandersmol.transferFrom(msg.sender, address(this), tokenId);
+            token.owner = msg.sender;
+            token.lockTime = block.timestamp;
+            token.lockPeriod = lockTime;
+            token.lastRewardTime = block.timestamp;
+            token.ground = _ground;
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     function stakeBonesInDevelopementGround(
@@ -104,14 +146,25 @@ contract PhaseII {
         updateDevelopmentGround(token, _tokenId, newAmount);
     }
 
-    function stakeBonesInDevGround(uint256 _amount, uint256 _tokenId) public {
+    function stakeBonesInDevGround(
+        uint256[] calldata _amount,
+        uint256[] calldata _tokenId
+    ) public {
         // require(pits.validation())
-        DevelopmentGround storage token = developmentGround[_tokenId];
-        require(bones.balanceOf(msg.sender) >= _amount);
-        require(token.owner == msg.sender);
-        require(_amount % MINIMUM_BONE_STAKE == 0);
-        bones.transferFrom(msg.sender, address(this), _amount * TO_WEI);
-        updateDevelopmentGround(token, _tokenId, _amount);
+        uint256 i;
+        for (; i < _amount.length; ) {
+            uint256 tokenId = _tokenId[i];
+            uint256 amount = _amount[i];
+            DevelopmentGround storage token = developmentGround[tokenId];
+            require(bones.balanceOf(msg.sender) >= amount);
+            require(token.owner == msg.sender);
+            require(amount % MINIMUM_BONE_STAKE == 0);
+            bones.transferFrom(msg.sender, address(this), amount * TO_WEI);
+            updateDevelopmentGround(token, tokenId, amount);
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     function leaveDevelopmentGround(uint256 _tokenId) external {
@@ -207,21 +260,34 @@ contract PhaseII {
      * After the completion of one day then calculate the reward to be on
      */
 
-    function getReward(uint256 _tokenId) public view returns (uint256) {
+    function getDevelopmentGroundReward(
+        uint256 _tokenId
+    ) public view returns (uint256) {
         DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 rewardRate = getRewardRate(token.lockPeriod);
         uint256 time = (block.timestamp - token.lastRewardTime) / 1 days;
         return rewardRate * time;
     }
 
-    function claimReward(uint256 _tokenId, bool _stake) public {
-        DevelopmentGround memory token = developmentGround[_tokenId];
-        require(token.owner == msg.sender);
-        uint256 reward = getReward(_tokenId);
-        developmentGround[_tokenId].lastRewardTime = block.timestamp;
-        _stake
-            ? stakeBonesInDevelopementGround(_tokenId, reward)
-            : bones.mint(msg.sender, reward * TO_WEI);
+    function claimReward(
+        uint256[] calldata _tokenId,
+        bool[] calldata _stake
+    ) public {
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            uint256 tokenId = _tokenId[i];
+            DevelopmentGround memory token = developmentGround[tokenId];
+            require(token.owner == msg.sender);
+            uint256 reward = getDevelopmentGroundReward(tokenId);
+            developmentGround[tokenId].lastRewardTime = block.timestamp;
+            _stake[i]
+                ? stakeBonesInDevelopementGround(tokenId, reward)
+                : bones.mint(msg.sender, reward * TO_WEI);
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     function updateDevelopmentGround(
@@ -235,54 +301,273 @@ contract PhaseII {
         trackTime[_tokenId][_token.amountPosition] = block.timestamp;
     }
 
+    function enterCaves(uint256[] calldata _tokenId) external {
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            uint256 tokenId = _tokenId[i];
+            require(neandersmol.ownerOf(tokenId) == msg.sender);
+            neandersmol.transferFrom(msg.sender, address(this), tokenId);
+            uint256 reward = getCavesReward(tokenId);
+            caves[tokenId] = Caves(msg.sender, block.timestamp, reward);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function leaveCave(uint256[] calldata _tokenId) external {
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            uint256 tokenId = _tokenId[i];
+            Caves memory cave = caves[tokenId];
+            require(cave.owner == msg.sender);
+            require(timeLeftToLeaveCaveInDays(tokenId) > 100 days);
+            claimCaveReward(tokenId);
+            delete caves[tokenId];
+            neandersmol.transferFrom(address(this), msg.sender, tokenId);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function claimCaveReward(uint256 _tokenId) internal {
+        uint256 amount = getCavesReward(_tokenId);
+        caves[_tokenId].stakingTime = block.timestamp;
+        bones.mint(msg.sender, amount * TO_WEI);
+    }
+
+    // after making first claim the time should be updated
+
+    function claimCaveReward(uint256[] calldata _tokenId) external {
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            claimCaveReward(_tokenId[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function getCavesReward(uint256 _tokenId) public view returns (uint256) {
+        Caves memory cave = caves[_tokenId];
+        return
+            (timeLeftToLeaveCaveInDays(_tokenId) * 10 * TO_WEI) +
+            cave.unclaimedReward;
+    }
+
+    function timeLeftToLeaveCaveInDays(
+        uint256 _tokenId
+    ) public view returns (uint256) {
+        Caves memory cave = caves[_tokenId];
+        return (cave.stakingTime - block.timestamp) / 1 days;
+    }
+
     // put a check for the common sense < 100
     // a function to leave labour ground
     // a function to generate random number ✅
     // a function to allow the owner of the token collect it consumbles
     function enterLaborGround(
-        uint256 _tokenId,
-        uint256 _suppliesId,
-        Job _job
+        uint256[] calldata _tokenId,
+        uint256[] calldata _supplyId,
+        Jobs[] calldata _job
     ) external {
-        require(neandersmol.ownerOf(_tokenId) == msg.sender);
-        require(validateTokenId(_suppliesId, _job));
-        supplies.safeTransferFrom(
-            msg.sender,
-            address(this),
-            _suppliesId,
-            1,
-            ""
+        require(
+            _tokenId.length == _supplyId.length &&
+                _supplyId.length == _job.length
         );
-        laborGround[_tokenId] = LaborGround(msg.sender, block.timestamp);
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            uint256 supplyId = _supplyId[i];
+            LaborGround storage labor = laborGround[_tokenId[i]];
+            require(neandersmol.ownerOf(_tokenId[i]) == msg.sender);
+            require(validateTokenId(supplyId, _job[i]));
+            supplies.safeTransferFrom(
+                msg.sender,
+                address(this),
+                supplyId,
+                1,
+                ""
+            );
+            labor.owner = msg.sender;
+            labor.lockTime = block.timestamp;
+            labor.supplyId = supplyId;
+            labor.job = _job[i];
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
-    // 0 => got nothing
-    // 1 - 3 => common
-    // 4 - 6 rare
-    // 7 break their supply
+    function bringInAnimalsToLaborGround(
+        uint256 _tokenId,
+        uint256 _animalsId
+    ) public {
+        LaborGround storage labor = laborGround[_tokenId];
+        require(labor.owner == msg.sender);
+        animals.safeTransferFrom(msg.sender, address(this), _animalsId, 1, "");
+        labor.animalId = _animalsId + 1; // added one since animals id started from 0
+    }
+
     function claimCollectables(uint256 _tokenId) public {
         LaborGround memory labor = laborGround[_tokenId];
         require(msg.sender == labor.owner);
         require(block.timestamp > labor.lockTime + 3 days);
-        uint256 tokenId = getRandom(10);
-        if (tokenId == 0) return;
-        if (tokenId > 6) return; // break supply
-        consumables.mint(msg.sender, tokenId, 1);
+        uint256 consumablesTokenId = checkPossibleClaims(labor);
+        consumables.mint(msg.sender, consumablesTokenId, 1);
+        laborGround[_tokenId].lockTime = 0;
     }
 
-    function leaveLaborGround(uint256 _tokenId) external {
-        claimCollectables(_tokenId);
-        delete laborGround[_tokenId];
-        supplies.safeTransferFrom(address(this), msg.sender, 1, 1, "");
+    function claimCollectables(uint256[] calldata _tokenId) public {
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            claimCollectables(_tokenId[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    // MAX_SUPPLY_BABY_DINO => 0
+    // MAX_SUPPLY_WOLF => 1
+    // MAX_SUPPLY_SABERTOOTH => 2
+    // MAX_SUPPLY_TREX  => 3
+    // MAX_SUPPLY_MAMMOTH => 4
+    // MAX_SUPPLY_WHALE => 5
+
+    // 1 - 3 => common
+    // 4 - 6 rare
+
+    function checkPossibleClaims(
+        LaborGround memory labor
+    ) internal returns (uint256) {
+        uint256 rnd = getRandom(101);
+        uint animalId = labor.animalId;
+        uint256 consumablesTokenId;
+        uint256 tokenId = labor.supplyId;
+        (uint256 tokenOne, uint256 tokenTwo) = getConsumablesTokenId(labor.job);
+        uint256 max;
+        uint256 min;
+        if (animalId == 0) {
+            if (rnd < 61) {
+                consumablesTokenId = tokenOne;
+            } else if (rnd > 60 && rnd < 81) {
+                consumablesTokenId = tokenTwo;
+            } else {
+                max = 3;
+                min = 2;
+            }
+        }
+        if (animalId == 1) {
+            if (rnd < 66) {
+                consumablesTokenId = tokenOne;
+            } else if (rnd > 66 && rnd < 86) {
+                consumablesTokenId = tokenTwo;
+            } else {
+                max = 16;
+                min = 5;
+            }
+        }
+        if (animalId == 2) {
+            if (rnd < 66) {
+                consumablesTokenId = tokenOne;
+            } else if (rnd > 65 && rnd < 96) {
+                consumablesTokenId = tokenTwo;
+            } else {
+                max = 11;
+                min = 6;
+            }
+        }
+        if (animalId == 3) {
+            if (rnd < 71) {
+                consumablesTokenId = tokenOne;
+            } else if (rnd > 70 && rnd < 96) {
+                consumablesTokenId = tokenTwo;
+            } else {
+                max = 6;
+                min = 1;
+            }
+        }
+        if (max != 0 && min != 0) breakOrFailed(tokenId, max, min);
+        animalId == 4 && rnd < 71
+            ? consumablesTokenId = tokenOne
+            : consumablesTokenId = tokenTwo;
+        animalId == 5 && rnd < 66
+            ? consumablesTokenId = tokenOne
+            : consumablesTokenId = tokenTwo;
+        animalId == 6 && rnd < 61
+            ? consumablesTokenId = tokenOne
+            : consumablesTokenId = tokenTwo;
+
+        return consumablesTokenId;
+    }
+
+    function getConsumablesTokenId(
+        Jobs _job
+    ) internal pure returns (uint256, uint256) {
+        uint256 tokenIdOne;
+        uint256 tokenIdTwo;
+        if (_job == Jobs.Digging) (tokenIdOne, tokenIdTwo) = (0, 3);
+        if (_job == Jobs.Foraging) (tokenIdOne, tokenIdTwo) = (1, 4);
+        if (_job == Jobs.Mining) (tokenIdOne, tokenIdTwo) = (2, 5);
+
+        return (tokenIdOne, tokenIdTwo);
+    }
+
+    function breakOrFailed(
+        uint256 _animalId,
+        uint256 _amount,
+        uint256 _min
+    ) internal {
+        uint256 random = getRandom(_amount);
+        if (random < _min) {
+            supplies.safeTransferFrom(
+                address(this),
+                msg.sender,
+                _animalId,
+                1,
+                ""
+            );
+        } else return;
+    }
+
+    // compare this to when you dont use delete
+    function leaveLaborGround(uint256[] calldata _tokenId) external {
+        uint256 i;
+
+        for (; i < _tokenId.length; ) {
+            uint256 tokenId = _tokenId[i];
+            LaborGround memory labor = laborGround[tokenId];
+            claimCollectables(tokenId);
+            delete laborGround[tokenId];
+            if (labor.animalId != 0) {
+                animals.safeTransferFrom(
+                    address(this),
+                    msg.sender,
+                    labor.animalId + 1,
+                    1,
+                    ""
+                );
+            }
+
+            supplies.safeTransferFrom(
+                address(this),
+                msg.sender,
+                labor.supplyId,
+                1,
+                ""
+            );
+        }
     }
 
     function validateTokenId(
         uint256 _tokenId,
-        Job _job
+        Jobs _job
     ) internal pure returns (bool res) {
-        if (_job == Job.Digging) return _tokenId == 0;
-        if (_job == Job.Foraging) return _tokenId == 1;
-        if (_job == Job.Mining) return _tokenId == 2;
+        if (_job == Jobs.Digging) return _tokenId == 0;
+        if (_job == Jobs.Foraging) return _tokenId == 1;
+        if (_job == Jobs.Mining) return _tokenId == 2;
     }
 
     // @remind use a better solution than this

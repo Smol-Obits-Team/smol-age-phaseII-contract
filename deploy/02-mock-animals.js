@@ -1,19 +1,17 @@
-const { network } = require("hardhat");
-
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
 
   if (chainId === 31337) {
-    const nft = await deploy("mERC721", {
+    const animals = await deploy("SmolAgeAnimals", {
       from: deployer,
       args: [],
       log: true,
     });
 
-    log(`Mock Nft contract successfully deployed to ${nft.address}`);
+    log(`SmolAgeAnimals contract successfully deployed to ${animals.address}`);
   }
 };
 
-module.exports.tags = ["all", "nft"];
+module.exports.tags = ["all", "animals"];
