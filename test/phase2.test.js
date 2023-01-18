@@ -69,14 +69,19 @@ describe("test phase two", () => {
       phaseII.enterDevelopmentGround([1], [1], [1])
     ).to.be.revertedWith("InvalidLockTime");
 
-    await phaseII.enterDevelopmentGround(
+    const tx = await phaseII.enterDevelopmentGround(
       [1, 3],
       [toDays(50), toDays(150)],
       [0, 1]
     );
+    const txRes = await tx.wait();
+    const blockBefore = await ethers.provider.getBlock(
+      txRes.logs[0].blockNumber
+    );
     const info = await phaseII.getDevelopmentGroundInfo(1);
     expect(info.owner).to.equal(owner.address);
     expect(info.lockPeriod).to.equal(toDays(50));
+    expect(info.lockTime).to.equal(blockBefore.timestamp);
     expect((await phaseII.getDevelopmentGroundInfo(3)).ground).to.equal(1);
   });
 });

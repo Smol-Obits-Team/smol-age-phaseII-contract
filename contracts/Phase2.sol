@@ -46,10 +46,10 @@ contract Phase2 {
 
     struct DevelopmentGround {
         address owner;
-        uint24 lockTime;
-        uint24 lockPeriod;
-        uint24 lastRewardTime;
-        uint24 amountPosition;
+        uint48 lockPeriod;
+        uint48 amountPosition;
+        uint128 lockTime;
+        uint128 lastRewardTime;
         uint256 bonesStaked;
         Grounds ground;
     }
@@ -128,15 +128,13 @@ contract Phase2 {
                 revert CsIsBellowHundred();
             if (neandersmol.ownerOf(tokenId) != msg.sender)
                 revert NotYourToken();
-            console.log("The lock time is", _lockTime[i]);
             if (!lockTimeExists(lockTime)) revert InvalidLockTime();
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             token.owner = msg.sender;
-            token.lockTime = uint24(block.timestamp);
-            token.lockPeriod = uint24(lockTime);
-            token.lastRewardTime = uint24(block.timestamp);
+            token.lockTime = uint128(block.timestamp);
+            token.lockPeriod = uint48(lockTime);
+            token.lastRewardTime = uint128(block.timestamp);
             token.ground = _ground[i];
-
             unchecked {
                 ++i;
             }
@@ -210,7 +208,7 @@ contract Phase2 {
         DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 i = 1;
         uint256 amount;
-        uint24 count;
+        uint48 count;
         for (; i <= token.amountPosition; ) {
             developPrimarySkill(_tokenId);
             uint256 time = trackTime[_tokenId][i];
@@ -325,7 +323,9 @@ contract Phase2 {
             DevelopmentGround memory token = developmentGround[tokenId];
             require(token.owner == msg.sender);
             uint256 reward = getDevelopmentGroundReward(tokenId);
-            developmentGround[tokenId].lastRewardTime = uint24(block.timestamp);
+            developmentGround[tokenId].lastRewardTime = uint128(
+                block.timestamp
+            );
             _stake[i]
                 ? stakeBonesInDevelopementGround(tokenId, reward)
                 : bones.mint(msg.sender, reward);
