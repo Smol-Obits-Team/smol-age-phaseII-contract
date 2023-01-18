@@ -7,12 +7,15 @@ contract Pits {
     IERC20 public bones;
     uint256 private bonesStaked;
 
+    uint256 private timeBelowMinimum;
+
     uint256 private constant TO_WEI = 10 ** 18;
 
     mapping(address => uint256) private balance;
 
     constructor(address _bones) {
         bones = IERC20(_bones);
+        timeBelowMinimum = block.timestamp;
     }
 
     function stakeBonesInYard(uint256 _amount) external {
@@ -26,6 +29,7 @@ contract Pits {
         require(_amount >= balance[msg.sender]);
         balance[msg.sender] -= _amount;
         bonesStaked -= _amount;
+        if (!validation()) timeBelowMinimum = block.timestamp;
         require(bones.transfer(msg.sender, _amount * TO_WEI));
     }
 
@@ -33,7 +37,11 @@ contract Pits {
         return bonesStaked;
     }
 
-    function validation() external view returns (bool) {
+    function validation() public view returns (bool) {
         return bonesStaked * TO_WEI >= (bones.totalSupply() * 3) / 10;
+    }
+
+    function getTimeBelowMinimum() external view returns (uint256) {
+        return timeBelowMinimum;
     }
 }

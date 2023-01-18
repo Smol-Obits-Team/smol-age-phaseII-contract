@@ -7,7 +7,7 @@ import {IToken} from "./interfaces/IToken.sol";
 import {INeandersmol} from "./interfaces/INeandersmol.sol";
 import {IConsumables, IERC1155} from "./interfaces/IConsumables.sol";
 
-contract PhaseII {
+contract Phase2 {
     IPits pits;
     IToken bones;
     IERC1155 animals;
@@ -31,34 +31,34 @@ contract PhaseII {
 
     uint256 private constant INCREASE_RATE = 1;
 
-    uint256 private constant MINIMUM_BONE_STAKE = 1000;
+    uint256 private constant MINIMUM_BONE_STAKE = 1000 * TO_WEI;
 
     /**
      * Things left to do
-     * enter the tokenIds with arrays
-     * enter and emit events
+     * enter the tokenIds with arrays ✅
+     *  emit events
      * check if all the times are updted as they should be
      * correct the amount of primary skill earned to 0.1 ~ 1
-     * pack the structs
+     * pack the structs ✅
      * remove all the unnecassary comments
      * create a new branch and make that one for the upgradable contracts
      */
 
     struct DevelopmentGround {
         address owner;
-        uint256 lockTime;
-        uint256 lockPeriod;
-        uint256 lastRewardTime;
+        uint24 lockTime;
+        uint24 lockPeriod;
+        uint24 lastRewardTime;
+        uint24 amountPosition;
         uint256 bonesStaked;
-        uint256 amountPosition;
         Grounds ground;
     }
 
     struct LaborGround {
         address owner;
-        uint256 lockTime;
-        uint256 supplyId;
-        uint256 animalId;
+        uint32 lockTime;
+        uint32 supplyId;
+        uint32 animalId;
         Jobs job;
     }
 
@@ -98,27 +98,44 @@ contract PhaseII {
 
     /// @notice this function only works for skilled Neandersmols
 
+    error LengthsNotEqual();
+    error DevelopmentGroundIsLocked();
+    error CsIsBellowHundred();
+    error NotYourToken();
+    error InvalidLockTime();
+
     function enterDevelopmentGround(
         uint256[] calldata _tokenId,
         uint256[] calldata _lockTime,
-        Grounds _ground
+        Grounds[] calldata _ground
     ) external {
         uint256 i;
-        require(_tokenId.length == _lockTime.length);
-        // check that the bones staked is greater than 30% of the ts
-        // require(pits.validation())
+        /**
+         * ([1,2],[0], [1,3])
+         * true and true =>  revert
+         * ([1,2],[0], [1])
+         * true and false => not revert
+         */
+        if (
+            _tokenId.length != _lockTime.length ||
+            _lockTime.length != _ground.length
+        ) revert LengthsNotEqual();
+        if (!pits.validation()) revert DevelopmentGroundIsLocked();
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             DevelopmentGround storage token = developmentGround[tokenId];
-            // require(neandersmol.getCommonSense(tokenId) >= 100);
-            require(neandersmol.ownerOf(tokenId) == msg.sender);
-            require(lockTimeExists(lockTime));
+            if (neandersmol.getCommonSense(tokenId) < 100)
+                revert CsIsBellowHundred();
+            if (neandersmol.ownerOf(tokenId) != msg.sender)
+                revert NotYourToken();
+            console.log("The lock time is", _lockTime[i]);
+            if (!lockTimeExists(lockTime)) revert InvalidLockTime();
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             token.owner = msg.sender;
-            token.lockTime = block.timestamp;
-            token.lockPeriod = lockTime;
-            token.lastRewardTime = block.timestamp;
-            token.ground = _ground;
+            token.lockTime = uint24(block.timestamp);
+            token.lockPeriod = uint24(lockTime);
+            token.lastRewardTime = uint24(block.timestamp);
+            token.ground = _ground[i];
 
             unchecked {
                 ++i;
@@ -136,11 +153,11 @@ contract PhaseII {
         if (remainder == _amount) return;
         if (remainder != 0) {
             newAmount = _amount - remainder;
-            bones.mint(msg.sender, remainder * TO_WEI);
-            bones.mint(address(this), newAmount * TO_WEI);
+            bones.mint(msg.sender, remainder);
+            bones.mint(address(this), newAmount);
         } else {
             newAmount = _amount;
-            bones.mint(address(this), newAmount * TO_WEI);
+            bones.mint(address(this), newAmount);
         }
 
         updateDevelopmentGround(token, _tokenId, newAmount);
@@ -150,7 +167,7 @@ contract PhaseII {
         uint256[] calldata _amount,
         uint256[] calldata _tokenId
     ) public {
-        // require(pits.validation())
+        require(pits.validation());
         uint256 i;
         for (; i < _amount.length; ) {
             uint256 tokenId = _tokenId[i];
@@ -159,7 +176,7 @@ contract PhaseII {
             require(bones.balanceOf(msg.sender) >= amount);
             require(token.owner == msg.sender);
             require(amount % MINIMUM_BONE_STAKE == 0);
-            bones.transferFrom(msg.sender, address(this), amount * TO_WEI);
+            bones.transferFrom(msg.sender, address(this), amount);
             updateDevelopmentGround(token, tokenId, amount);
             unchecked {
                 ++i;
@@ -176,11 +193,25 @@ contract PhaseII {
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
     }
 
+    function removeBones(
+        uint256[] calldata _tokenId,
+        bool[] calldata _all
+    ) external {
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            removeBones(_tokenId[i], _all[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
     function removeBones(uint256 _tokenId, bool _all) public {
         DevelopmentGround memory token = developmentGround[_tokenId];
+        uint256 i = 1;
         uint256 amount;
-        uint256 count;
-        for (uint256 i = 1; i <= token.amountPosition; ) {
+        uint24 count;
+        for (; i <= token.amountPosition; ) {
             developPrimarySkill(_tokenId);
             uint256 time = trackTime[_tokenId][i];
             uint256 prev = trackTime[_tokenId][i + 1];
@@ -242,7 +273,7 @@ contract PhaseII {
     function calculatePrimarySkill(
         uint256 _tokenId
     ) public view returns (uint256) {
-        // make sure bones staked is more than 50% the total supply
+        // make sure bones staked is more than 30% the total supply
         DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 amount;
         for (uint256 i = 1; i <= token.amountPosition; ) {
@@ -253,7 +284,22 @@ contract PhaseII {
                 ++i;
             }
         }
-        return amount;
+        return calculateFinalReward(amount);
+    }
+
+    function calculateFinalReward(
+        uint256 _amount
+    ) internal view returns (uint256) {
+        uint256 finalAmount;
+        !pits.validation() && _amount != 0
+            ? finalAmount =
+                _amount -
+                (((block.timestamp - pits.getTimeBelowMinimum()) / 1 days) *
+                    INCREASE_RATE *
+                    _amount)
+            : finalAmount = _amount;
+
+        return finalAmount;
     }
 
     /**
@@ -266,10 +312,10 @@ contract PhaseII {
         DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 rewardRate = getRewardRate(token.lockPeriod);
         uint256 time = (block.timestamp - token.lastRewardTime) / 1 days;
-        return rewardRate * time;
+        return calculateFinalReward(rewardRate * time);
     }
 
-    function claimReward(
+    function claimDevelopementGroundBonesReward(
         uint256[] calldata _tokenId,
         bool[] calldata _stake
     ) public {
@@ -279,10 +325,10 @@ contract PhaseII {
             DevelopmentGround memory token = developmentGround[tokenId];
             require(token.owner == msg.sender);
             uint256 reward = getDevelopmentGroundReward(tokenId);
-            developmentGround[tokenId].lastRewardTime = block.timestamp;
+            developmentGround[tokenId].lastRewardTime = uint24(block.timestamp);
             _stake[i]
                 ? stakeBonesInDevelopementGround(tokenId, reward)
-                : bones.mint(msg.sender, reward * TO_WEI);
+                : bones.mint(msg.sender, reward);
 
             unchecked {
                 ++i;
@@ -334,7 +380,7 @@ contract PhaseII {
     function claimCaveReward(uint256 _tokenId) internal {
         uint256 amount = getCavesReward(_tokenId);
         caves[_tokenId].stakingTime = block.timestamp;
-        bones.mint(msg.sender, amount * TO_WEI);
+        bones.mint(msg.sender, amount);
     }
 
     // after making first claim the time should be updated
@@ -390,8 +436,8 @@ contract PhaseII {
                 ""
             );
             labor.owner = msg.sender;
-            labor.lockTime = block.timestamp;
-            labor.supplyId = supplyId;
+            labor.lockTime = uint32(block.timestamp);
+            labor.supplyId = uint32(supplyId);
             labor.job = _job[i];
 
             unchecked {
@@ -407,7 +453,7 @@ contract PhaseII {
         LaborGround storage labor = laborGround[_tokenId];
         require(labor.owner == msg.sender);
         animals.safeTransferFrom(msg.sender, address(this), _animalsId, 1, "");
-        labor.animalId = _animalsId + 1; // added one since animals id started from 0
+        labor.animalId = uint32(_animalsId) + 1; // added one since animals id started from 0
     }
 
     function claimCollectables(uint256 _tokenId) public {

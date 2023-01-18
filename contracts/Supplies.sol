@@ -19,12 +19,7 @@ contract Supplies is ERC1155 {
     }
 
     function mint(address _to, uint256 _tokenId, uint256 _amount) external {
-        assembly {
-            if iszero(or(lt(_tokenId, 8), eq(_tokenId, 8))) {
-                revert(0x00, 0x00)
-            }
-        }
-        // require(_tokenId < 9);
+        require(_tokenId < 3);
         _mint(_to, _tokenId, _amount, "");
     }
 

@@ -11,7 +11,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const supplies = await ethers.getContract("Supplies");
   const consumables = await ethers.getContract("Consumables");
 
-  const phaseII = await deploy("PhaseII", {
+  const phase2 = await deploy("Phase2", {
     from: deployer,
     args: [
       pits.address,
@@ -24,7 +24,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     log: true,
   });
 
-  log(`Phase two contract successfully deployed to ${phaseII.address}`);
+  log(`Phase two contract successfully deployed to ${phase2.address}`);
 };
 
 module.exports.tags = ["all", "phase2"];
