@@ -5,11 +5,6 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
-// error
-error InvalidTokenId();
-error LengthsNotEqual();
-error AboveTheMaxSupply();
-
 /**
  * @title SmolAgeAnimals
  */
