@@ -21,12 +21,12 @@
     "hardhat-gas-reporter": "^1.0.7",
     "prettier": "^2.4.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
-    "solhint": "^3.3.6",
-    "solidity-coverage": "^0.8.2"
+    "solhint": "^3.3.6"
   },
   "dependencies": {
     "babel-eslint": "^10.1.0",
-    "dotenv": "^16.0.3"
+    "dotenv": "^16.0.3",
+    "solidity-coverage": "^0.8.2"
   },
   "mocha": {
     "timeout": 10000000

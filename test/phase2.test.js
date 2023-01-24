@@ -179,16 +179,15 @@ describe("test phase two", () => {
     const blockBefore = await ethers.provider.getBlock(
       txRes.logs[0].blockNumber
     );
-    const info = await phaseII.getCavesInfo(1);
-    expect(info.owner).to.equal(owner.address);
-    expect(info.stakingTime).to.equal(blockBefore.timestamp);
+    const [theOwner, time] = await phaseII.getCavesInfo(1);
+    expect(theOwner).to.equal(owner.address);
+    expect(time).to.equal(blockBefore.timestamp);
   });
   it("get cave rewards", async () => {
     await phaseII.enterCaves([1]);
     await increaseTime(24);
     expect(await phaseII.getCavesReward(1)).to.equal(toWei("10"));
     await phaseII.enterCaves([2]);
-    const info = await phaseII.getCavesInfo(1);
     expect(await phaseII.getCavesReward(1)).to.equal(toWei("10"));
     await increaseTime(24);
     expect(await phaseII.getCavesReward(1)).to.equal(toWei("20"));
@@ -205,9 +204,7 @@ describe("test phase two", () => {
     const blockBefore = await ethers.provider.getBlock(
       txRes.logs[0].blockNumber
     );
-    expect((await phaseII.getCavesInfo(1)).stakingTime).to.equal(
-      blockBefore.timestamp
-    );
+    expect((await phaseII.getCavesInfo(1))[1]).to.equal(blockBefore.timestamp);
     expect(await bones.totalSupply()).to.equal(
       toWei((INITIAL_SUPPLY + 10).toString())
     );
@@ -225,9 +222,9 @@ describe("test phase two", () => {
     );
     await increaseTime(24 * 100);
     await phaseII.leaveCave([1]);
-    const info = await phaseII.getCavesInfo(1);
-    expect(info.owner).to.equal("0x0000000000000000000000000000000000000000");
-    expect(info.stakingTime).to.equal("0");
+    const [theOwner, time] = await phaseII.getCavesInfo(1);
+    expect(theOwner).to.equal("0x0000000000000000000000000000000000000000");
+    expect(time).to.equal("0");
     expect(await bones.totalSupply()).to.equal(
       toWei((INITIAL_SUPPLY + 1000).toString())
     );

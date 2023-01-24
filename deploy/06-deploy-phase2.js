@@ -11,16 +11,23 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const supplies = await ethers.getContract("Supplies");
   const consumables = await ethers.getContract("Consumables");
 
+  const helperLibrary = await deploy("Lib", {
+    from: deployer,
+  });
+  const args = [
+    pits.address,
+    bones.address,
+    animals.address,
+    supplies.address,
+    consumables.address,
+    neandersmol.address,
+  ];
   const phase2 = await deploy("Phase2", {
     from: deployer,
-    args: [
-      pits.address,
-      bones.address,
-      animals.address,
-      supplies.address,
-      consumables.address,
-      neandersmol.address,
-    ],
+    args,
+    libraries: {
+      Rewards: helperLibrary.address,
+    },
     log: true,
   });
 
