@@ -52,6 +52,7 @@ describe("test phase two", () => {
     await bones.approve(phaseII.address, balance);
     await supplies.setApprovalForAll(phaseII.address, true);
     await animals.setApprovalForAll(phaseII.address, true);
+    await neandersmol.connect(player).mint(1);
   });
 
   it("enter pits", async () => {
@@ -81,7 +82,6 @@ describe("test phase two", () => {
     await expect(
       phaseII.enterDevelopmentGround([2], [1], [1])
     ).to.be.revertedWith("CsIsBellowHundred");
-    neandersmol.connect(player).mint(1);
     await expect(
       phaseII.enterDevelopmentGround([16], [1], [1])
     ).to.be.revertedWith("NotYourToken");
@@ -111,7 +111,6 @@ describe("test phase two", () => {
     await expect(phaseII.enterLaborGround([1], [], [1])).to.be.revertedWith(
       "LengthsNotEqual"
     );
-    await neandersmol.connect(player).mint(1);
     await expect(phaseII.enterLaborGround([16], [1], [1])).to.be.revertedWith(
       "NotYourToken"
     );
@@ -172,5 +171,65 @@ describe("test phase two", () => {
     expect(await supplies.balanceOf(phaseII.address, 1)).to.equal(1);
     await increaseTime(24 * 3);
     await phaseII.leaveLaborGround([4]);
+  });
+  it("enter caves", async () => {
+    await expect(phaseII.enterCaves([16])).to.be.revertedWith("NotYourToken");
+    const tx = await phaseII.enterCaves([1]);
+    const txRes = await tx.wait();
+    const blockBefore = await ethers.provider.getBlock(
+      txRes.logs[0].blockNumber
+    );
+    const info = await phaseII.getCavesInfo(1);
+    expect(info.owner).to.equal(owner.address);
+    expect(info.stakingTime).to.equal(blockBefore.timestamp);
+  });
+  it("get cave rewards", async () => {
+    await phaseII.enterCaves([1]);
+    await increaseTime(24);
+    expect(await phaseII.getCavesReward(1)).to.equal(toWei("10"));
+    await phaseII.enterCaves([2]);
+    const info = await phaseII.getCavesInfo(1);
+    expect(await phaseII.getCavesReward(1)).to.equal(toWei("10"));
+    await increaseTime(24);
+    expect(await phaseII.getCavesReward(1)).to.equal(toWei("20"));
+    expect(await phaseII.getCavesReward(2)).to.equal(toWei("10"));
+  });
+  it("claim cave rewards", async () => {
+    await phaseII.enterCaves([1]);
+    await expect(phaseII.claimCaveReward([1])).to.be.revertedWith(
+      "ZeroBalanceError"
+    );
+    await increaseTime(24);
+    const tx = await phaseII.claimCaveReward([1]);
+    const txRes = await tx.wait();
+    const blockBefore = await ethers.provider.getBlock(
+      txRes.logs[0].blockNumber
+    );
+    expect((await phaseII.getCavesInfo(1)).stakingTime).to.equal(
+      blockBefore.timestamp
+    );
+    expect(await bones.totalSupply()).to.equal(
+      toWei((INITIAL_SUPPLY + 10).toString())
+    );
+    await increaseTime(24 * 9);
+    await phaseII.claimCaveReward([1]);
+    expect(await bones.totalSupply()).to.equal(
+      toWei((INITIAL_SUPPLY + 100).toString())
+    );
+  });
+  it("leave cave", async () => {
+    await phaseII.enterCaves([1]);
+    await expect(phaseII.leaveCave([2])).to.be.revertedWith("NotYourToken");
+    await expect(phaseII.leaveCave([1])).to.be.revertedWith(
+      "NeandersmolsIsLocked"
+    );
+    await increaseTime(24 * 100);
+    await phaseII.leaveCave([1]);
+    const info = await phaseII.getCavesInfo(1);
+    expect(info.owner).to.equal("0x0000000000000000000000000000000000000000");
+    expect(info.stakingTime).to.equal("0");
+    expect(await bones.totalSupply()).to.equal(
+      toWei((INITIAL_SUPPLY + 1000).toString())
+    );
   });
 });
