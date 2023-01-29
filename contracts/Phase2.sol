@@ -79,12 +79,12 @@ contract Phase2 is IError {
             token.ground = _ground[i];
             token.currentLockPeriod = pits.getTimeOut();
 
-            // emit EnterDevelopmentGround(
-            //     msg.sender,
-            //     tokenId,
-            //     lockTime,
-            //     _ground[i]
-            // );
+            emit EnterDevelopmentGround(
+                msg.sender,
+                tokenId,
+                lockTime,
+                _ground[i]
+            );
             unchecked {
                 ++i;
             }
@@ -109,7 +109,7 @@ contract Phase2 is IError {
             if (amount % MINIMUM_BONE_STAKE != 0) revert WrongMultiple();
             bones.transferFrom(msg.sender, address(this), amount);
             updateDevelopmentGround(token, tokenId, amount);
-            // emit StakeBonesInDevelopmentGround(msg.sender, amount, tokenId);
+            emit StakeBonesInDevelopmentGround(msg.sender, amount, tokenId);
             unchecked {
                 ++i;
             }
@@ -133,7 +133,7 @@ contract Phase2 is IError {
             bones.mint(address(this), newAmount);
         }
         updateDevelopmentGround(token, _tokenId, newAmount);
-        // emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
+        emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
     }
 
     function getDevelopmentGroundBonesReward(
@@ -155,7 +155,7 @@ contract Phase2 is IError {
         removeBones(_tokenId, true);
         delete developmentGround[_tokenId];
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
-        // emit LeaveDevelopmentGround(msg.sender, _tokenId);
+        emit LeaveDevelopmentGround(msg.sender, _tokenId);
     }
 
     function removeBones(
@@ -217,9 +217,9 @@ contract Phase2 is IError {
             developmentGround[_tokenId].bonesStaked -= amount;
         }
 
-        // if (!bones.transfer(msg.sender, amount)) revert TransferFailed();
+        if (!bones.transfer(msg.sender, amount)) revert TransferFailed();
 
-        // emit RemoveBones(msg.sender, _tokenId, amount);
+        emit RemoveBones(msg.sender, _tokenId, amount);
     }
 
     function developPrimarySkill(uint256 _tokenId) internal {
@@ -294,12 +294,12 @@ contract Phase2 is IError {
         uint256[] calldata _tokenId,
         bool[] calldata _stake
     ) external {
-        // if (_tokenId.length != _stake.length) revert LengthsNotEqual();
+        if (_tokenId.length != _stake.length) revert LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
             Lib.DevelopmentGround memory token = developmentGround[tokenId];
-            require(token.owner == msg.sender);
+            if (token.owner != msg.sender) revert NotYourToken();
             uint256 reward = getDevelopmentGroundBonesReward(tokenId);
             developmentGround[tokenId].lastRewardTime = uint128(
                 block.timestamp
@@ -308,11 +308,11 @@ contract Phase2 is IError {
                 ? stakeBonesInDevelopmentGround(tokenId, reward)
                 : bones.mint(msg.sender, reward);
 
-            // emit ClaimDevelopementGroundBonesReward(
-            //     msg.sender,
-            //     tokenId,
-            //     _stake[i]
-            // );
+            emit ClaimDevelopementGroundBonesReward(
+                msg.sender,
+                tokenId,
+                _stake[i]
+            );
             unchecked {
                 ++i;
             }
@@ -329,7 +329,7 @@ contract Phase2 is IError {
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             cave.owner = msg.sender;
             cave.stakingTime = uint96(block.timestamp);
-            // emit EnterCaves(msg.sender, tokenId);
+            emit EnterCaves(msg.sender, tokenId);
             unchecked {
                 ++i;
             }
@@ -358,7 +358,7 @@ contract Phase2 is IError {
         if (reward == 0) revert ZeroBalanceError();
         caves[_tokenId].stakingTime = uint96(block.timestamp);
         bones.mint(msg.sender, reward);
-        // emit ClaimCaveReward(msg.sender, _tokenId, reward);
+        emit ClaimCaveReward(msg.sender, _tokenId, reward);
     }
 
     // after making first claim the time should be updated
@@ -435,11 +435,11 @@ contract Phase2 is IError {
                 ""
             );
             labor.animalId = uint32(animalsId) - 1; // added one since animals token id starts from 0
-            // emit RemoveAnimalsFromLaborGround(
-            //     msg.sender,
-            //     _tokenId[i],
-            //     animalsId
-            // );
+            emit RemoveAnimalsFromLaborGround(
+                msg.sender,
+                _tokenId[i],
+                animalsId
+            );
             unchecked {
                 ++i;
             }
@@ -466,11 +466,11 @@ contract Phase2 is IError {
                 ""
             );
             labor.animalId = uint32(animalsId) + 1; // added one since animals token id starts from 0
-            // emit BringInAnimalsToLaborGround(
-            //     msg.sender,
-            //     _tokenId[i],
-            //     animalsId
-            // );
+            emit BringInAnimalsToLaborGround(
+                msg.sender,
+                _tokenId[i],
+                animalsId
+            );
             unchecked {
                 ++i;
             }
@@ -545,7 +545,7 @@ contract Phase2 is IError {
                     ""
                 );
             neandersmol.transferFrom(address(this), msg.sender, tokenId);
-            // emit LeaveLaborGround(msg.sender, tokenId);
+            emit LeaveLaborGround(msg.sender, tokenId);
             unchecked {
                 ++i;
             }
