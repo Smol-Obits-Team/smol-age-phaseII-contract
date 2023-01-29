@@ -2,10 +2,10 @@
 pragma solidity 0.8.17;
 
 import "hardhat/console.sol";
-import {IError} from "./interfaces/IError.sol";
+import {Lib} from "./library/Lib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract Pits is IError {
+contract Pits {
     IERC20 public bones;
     uint256 private bonesStaked;
 
@@ -14,8 +14,6 @@ contract Pits is IError {
     uint256 private timeBelowMinimum;
 
     uint256 private totalDaysOff;
-
-    uint256 private constant TO_WEI = 10 ** 18;
 
     mapping(address => uint256) private balance;
     mapping(uint256 => uint256) private trackDaysOff;

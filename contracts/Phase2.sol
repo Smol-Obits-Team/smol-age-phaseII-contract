@@ -3,17 +3,14 @@ pragma solidity 0.8.17;
 
 import "hardhat/console.sol";
 import {Lib} from "./library/Lib.sol";
-import {Phase2Helper} from "./Phase2Helper.sol";
-import {IError} from "./interfaces/IError.sol";
 import {IPits} from "./interfaces/IPits.sol";
 import {IToken} from "./interfaces/IToken.sol";
 import {INeandersmol} from "./interfaces/INeandersmol.sol";
 import {IConsumables, IERC1155} from "./interfaces/IConsumables.sol";
 
-contract Phase2 is IError {
+contract Phase2 {
     IPits private pits;
     IToken private bones;
-    Phase2Helper private helper;
     IERC1155 private animals;
     IERC1155 private supplies;
     IConsumables private consumables;
@@ -57,27 +54,18 @@ contract Phase2 is IError {
         Lib.Grounds[] calldata _ground
     ) external {
         uint256 i;
-
-        if (
-            _tokenId.length != _lockTime.length ||
-            _lockTime.length != _ground.length
-        ) revert LengthsNotEqual();
-        if (!pits.validation()) revert DevelopmentGroundIsLocked();
+        checkLength(_tokenId, _lockTime);
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             Lib.DevelopmentGround storage token = developmentGround[tokenId];
-            if (neandersmol.getCommonSense(tokenId) < 100)
-                revert CsIsBellowHundred();
-            if (neandersmol.ownerOf(tokenId) != msg.sender)
-                revert NotYourToken();
-            if (!lockTimeExists(lockTime)) revert InvalidLockTime();
-            neandersmol.transferFrom(msg.sender, address(this), tokenId);
-            token.owner = msg.sender;
-            token.lockTime = uint128(block.timestamp);
-            token.lockPeriod = uint48(lockTime);
-            token.lastRewardTime = uint128(block.timestamp);
-            token.ground = _ground[i];
-            token.currentLockPeriod = pits.getTimeOut();
+            Lib.enterDevelopmentGround(
+                token,
+                address(neandersmol),
+                address(pits),
+                tokenId,
+                lockTime,
+                _ground[i]
+            );
 
             emit EnterDevelopmentGround(
                 msg.sender,
@@ -95,18 +83,18 @@ contract Phase2 is IError {
         uint256[] calldata _amount,
         uint256[] calldata _tokenId
     ) external {
-        if (!pits.validation()) revert DevelopmentGroundIsLocked();
+        if (!pits.validation()) revert Lib.DevelopmentGroundIsLocked();
         uint256 i;
         for (; i < _amount.length; ) {
             uint256 tokenId = _tokenId[i];
             uint256 amount = _amount[i];
             Lib.DevelopmentGround storage token = developmentGround[tokenId];
             if (bones.balanceOf(msg.sender) < amount)
-                revert BalanceIsInsufficient();
+                revert Lib.BalanceIsInsufficient();
             if (token.owner != msg.sender)
-                revert TokenNotInDevelopementGround();
+                revert Lib.TokenNotInDevelopementGround();
 
-            if (amount % MINIMUM_BONE_STAKE != 0) revert WrongMultiple();
+            if (amount % MINIMUM_BONE_STAKE != 0) revert Lib.WrongMultiple();
             bones.transferFrom(msg.sender, address(this), amount);
             updateDevelopmentGround(token, tokenId, amount);
             emit StakeBonesInDevelopmentGround(msg.sender, amount, tokenId);
@@ -140,18 +128,14 @@ contract Phase2 is IError {
         uint256 _tokenId
     ) public view returns (uint256) {
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        if (token.lockPeriod == 0) return 0;
-        uint256 rewardRate = getRewardRate(token.lockPeriod);
-
-        uint256 time = (block.timestamp - token.lastRewardTime) / 1 days;
-        return calculateFinalReward(_tokenId, rewardRate * time) * TO_WEI;
+        return Lib.getDevelopmentGroundBonesReward(token, address(pits));
     }
 
     function leaveDevelopmentGround(uint256 _tokenId) external {
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
         if (block.timestamp < token.lockTime + token.lockPeriod)
-            revert NeandersmolsIsLocked();
-        if (token.owner != msg.sender) revert NotYourToken();
+            revert Lib.NeandersmolsIsLocked();
+        if (token.owner != msg.sender) revert Lib.NotYourToken();
         removeBones(_tokenId, true);
         delete developmentGround[_tokenId];
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
@@ -162,7 +146,7 @@ contract Phase2 is IError {
         uint256[] calldata _tokenId,
         bool[] calldata _all
     ) external {
-        if (_tokenId.length != _all.length) revert LengthsNotEqual();
+        if (_tokenId.length != _all.length) revert Lib.LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ) {
             removeBones(_tokenId[i], _all[i]);
@@ -212,12 +196,12 @@ contract Phase2 is IError {
             developmentGround[_tokenId].bonesStaked = 0;
             if (token.bonesStaked - amount != 0)
                 if (!bones.transfer(address(1), token.bonesStaked - amount))
-                    revert TransferFailed(); // change the address(1)
+                    revert Lib.TransferFailed(); // change the address(1)
         } else {
             developmentGround[_tokenId].bonesStaked -= amount;
         }
 
-        if (!bones.transfer(msg.sender, amount)) revert TransferFailed();
+        if (!bones.transfer(msg.sender, amount)) revert Lib.TransferFailed();
 
         emit RemoveBones(msg.sender, _tokenId, amount);
     }
@@ -261,45 +245,16 @@ contract Phase2 is IError {
         // return calculateFinalReward(amount);
     }
 
-    function calculateFinalReward(
-        uint256 _tokenId,
-        uint256 _amount
-    ) internal view returns (uint256) {
-        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        uint256 amount;
-        if (token.currentLockPeriod != pits.getTimeOut()) {
-            uint256 howLong = (block.timestamp - pits.getTimeOut()) / 1 days;
-            amount =
-                (pits.getTotalDaysOff() -
-                    pits.getDaysOff(token.currentLockPeriod) +
-                    howLong) *
-                10;
-        }
-        if (token.currentLockPeriod == 0) {
-            uint256 off;
-            // use this once
-            pits.getTimeOut() != 0
-                ? off = (block.timestamp - pits.getTimeOut()) / 1 days
-                : 0;
-            // the switch to getTotalDaysOff
-            if (pits.validation()) off = pits.getTotalDaysOff();
-            console.log(off, pits.getTotalDaysOff());
-            amount = off * 10;
-        }
-        console.log(amount, _amount);
-        return _amount - amount;
-    }
-
     function claimDevelopementGroundBonesReward(
         uint256[] calldata _tokenId,
         bool[] calldata _stake
     ) external {
-        if (_tokenId.length != _stake.length) revert LengthsNotEqual();
+        if (_tokenId.length != _stake.length) revert Lib.LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
             Lib.DevelopmentGround memory token = developmentGround[tokenId];
-            if (token.owner != msg.sender) revert NotYourToken();
+            if (token.owner != msg.sender) revert Lib.NotYourToken();
             uint256 reward = getDevelopmentGroundBonesReward(tokenId);
             developmentGround[tokenId].lastRewardTime = uint128(
                 block.timestamp
@@ -325,7 +280,7 @@ contract Phase2 is IError {
             uint256 tokenId = _tokenId[i];
             Lib.Caves storage cave = caves[tokenId];
             if (neandersmol.ownerOf(tokenId) != msg.sender)
-                revert NotYourToken();
+                revert Lib.NotYourToken();
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             cave.owner = msg.sender;
             cave.stakingTime = uint96(block.timestamp);
@@ -341,9 +296,9 @@ contract Phase2 is IError {
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
             Lib.Caves memory cave = caves[tokenId];
-            if (cave.owner != msg.sender) revert NotYourToken();
+            if (cave.owner != msg.sender) revert Lib.NotYourToken();
             if (100 days + cave.stakingTime > block.timestamp)
-                revert NeandersmolsIsLocked();
+                revert Lib.NeandersmolsIsLocked();
             if (getCavesReward(tokenId) != 0) claimCaveReward(tokenId);
             delete caves[tokenId];
             neandersmol.transferFrom(address(this), msg.sender, tokenId);
@@ -355,7 +310,7 @@ contract Phase2 is IError {
 
     function claimCaveReward(uint256 _tokenId) internal {
         uint256 reward = getCavesReward(_tokenId);
-        if (reward == 0) revert ZeroBalanceError();
+        if (reward == 0) revert Lib.ZeroBalanceError();
         caves[_tokenId].stakingTime = uint96(block.timestamp);
         bones.mint(msg.sender, reward);
         emit ClaimCaveReward(msg.sender, _tokenId, reward);
@@ -385,17 +340,17 @@ contract Phase2 is IError {
         if (
             _tokenId.length != _supplyId.length ||
             _supplyId.length != _job.length
-        ) revert LengthsNotEqual();
+        ) revert Lib.LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 supplyId = _supplyId[i];
             uint256 tokenId = _tokenId[i];
             Lib.LaborGround storage labor = laborGround[tokenId];
             if (neandersmol.ownerOf(tokenId) != msg.sender)
-                revert NotYourToken();
-            if (neandersmol.getCommonSense(tokenId) > 99) revert CsToHigh();
+                revert Lib.NotYourToken();
+            if (neandersmol.getCommonSense(tokenId) > 99) revert Lib.CsToHigh();
             if (!validateTokenId(supplyId, _job[i]))
-                revert InvalidTokenForThisJob();
+                revert Lib.InvalidTokenForThisJob();
             supplies.safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -425,8 +380,8 @@ contract Phase2 is IError {
         for (; i < _tokenId.length; ) {
             uint256 animalsId = _animalsId[i];
             Lib.LaborGround storage labor = laborGround[_tokenId[i]];
-            if (labor.owner != msg.sender) revert NotYourToken();
-            if (labor.animalId != animalsId + 1) revert NotYourToken();
+            if (labor.owner != msg.sender) revert Lib.NotYourToken();
+            if (labor.animalId != animalsId + 1) revert Lib.NotYourToken();
             animals.safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -456,7 +411,7 @@ contract Phase2 is IError {
         for (; i < _tokenId.length; ) {
             uint256 animalsId = _animalsId[i];
             Lib.LaborGround storage labor = laborGround[_tokenId[i]];
-            if (labor.owner != msg.sender) revert NotYourToken();
+            if (labor.owner != msg.sender) revert Lib.NotYourToken();
 
             animals.safeTransferFrom(
                 msg.sender,
@@ -479,8 +434,9 @@ contract Phase2 is IError {
 
     function claimCollectable(uint256 _tokenId) internal {
         Lib.LaborGround memory labor = laborGround[_tokenId];
-        if (msg.sender != labor.owner) revert NotYourToken();
-        if (block.timestamp < labor.lockTime + 3 days) revert CannotClaimNow();
+        if (msg.sender != labor.owner) revert Lib.NotYourToken();
+        if (block.timestamp < labor.lockTime + 3 days)
+            revert Lib.CannotClaimNow();
         uint256 consumablesTokenId = checkPossibleClaims(_tokenId, labor);
         if (consumablesTokenId != 0) {
             consumables.mint(msg.sender, consumablesTokenId, 1);
@@ -517,6 +473,8 @@ contract Phase2 is IError {
             );
             laborGround[_tokenId].supplyId = 0;
         }
+
+        return;
     }
 
     function leaveLaborGround(uint256[] calldata _tokenId) external {
@@ -653,8 +611,7 @@ contract Phase2 is IError {
         uint256 _tokenId
     ) internal view returns (uint256) {
         Lib.Caves memory cave = caves[_tokenId];
-        if (cave.stakingTime == 0) return 0;
-        return (block.timestamp - cave.stakingTime) / 1 days;
+        return Lib.timeLeftToLeaveCaveInDays(cave);
     }
 
     function lockTimeExists(uint256 _lockTime) internal pure returns (bool) {
@@ -676,7 +633,7 @@ contract Phase2 is IError {
         uint256[] calldata _tokenId,
         uint256[] calldata _animalsId
     ) internal pure {
-        if (_tokenId.length != _animalsId.length) revert LengthsNotEqual();
+        if (_tokenId.length != _animalsId.length) revert Lib.LengthsNotEqual();
     }
 
     function getRewardRate(
