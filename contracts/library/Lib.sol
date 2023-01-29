@@ -9,6 +9,7 @@ library Lib {
         uint128 lockTime;
         uint128 lastRewardTime;
         uint256 bonesStaked;
+        uint256 currentLockPeriod;
         Grounds ground;
     }
 
@@ -36,6 +37,4 @@ library Lib {
         Garden,
         Battlefield
     }
-
- 
 }

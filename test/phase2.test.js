@@ -31,7 +31,6 @@ describe("test phase two", () => {
 
   const unstakeFromPit = async () => {
     const balance = await bones.balanceOf(owner.address);
-    await bones.approve(pits.address, balance);
     await pits.removeBonesFromYard(toWei((INITIAL_SUPPLY / 10).toString()));
   };
 
@@ -228,5 +227,31 @@ describe("test phase two", () => {
     expect(await bones.totalSupply()).to.equal(
       toWei((INITIAL_SUPPLY + 1000).toString())
     );
+  });
+  it("calculate reward", async () => {
+    await stakeInPit();
+    await phaseII.enterDevelopmentGround(
+      [1, 3],
+      [toDays(50), toDays(150)],
+      [0, 1]
+    );
+    await increaseTime(24);
+
+    const res = await phaseII.getDevelopmentGroundBonesReward(1);
+    console.log(res.toString()); // 10 1 day
+    await unstakeFromPit();
+    await increaseTime(48);
+    const resII = await phaseII.getDevelopmentGroundBonesReward(1);
+    console.log(resII.toString()); // 10 3 days
+    await stakeInPit();
+    await increaseTime(48);
+    const resIII = await phaseII.getDevelopmentGroundBonesReward(1);
+    console.log(resIII.toString()); // 30 5 days
+    const balance = await bones.balanceOf(pits.address);
+    await pits.removeBonesFromYard(balance);
+    await stakeInPit();
+    await increaseTime(120);
+    const resIV = await phaseII.getDevelopmentGroundBonesReward(1);
+    console.log(resIV.toString()); // 80 7 days
   });
 });
