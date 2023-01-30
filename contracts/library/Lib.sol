@@ -4,21 +4,20 @@ import {IPits} from "../interfaces/IPits.sol";
 import {INeandersmol} from "../interfaces/INeandersmol.sol";
 
 library Lib {
-    error LengthsNotEqual();
-    error DevelopmentGroundIsLocked();
-    error CsIsBellowHundred();
-    error NotYourToken();
-    error InvalidLockTime();
-    error InvalidTokenForThisJob();
     error CsToHigh();
-    error CannotClaimNow();
-
-    error BalanceIsInsufficient();
-    error TokenNotInDevelopementGround();
+    error NotYourToken();
     error WrongMultiple();
+    error CannotClaimNow();
     error TransferFailed();
-    error NeandersmolsIsLocked();
+    error InvalidLockTime();
+    error LengthsNotEqual();
     error ZeroBalanceError();
+    error CsIsBellowHundred();
+    error NeandersmolsIsLocked();
+    error BalanceIsInsufficient();
+    error InvalidTokenForThisJob();
+    error DevelopmentGroundIsLocked();
+    error TokenNotInDevelopementGround();
 
     uint256 private constant INCREASE_RATE = 1;
 
@@ -164,11 +163,9 @@ library Lib {
         uint256 _supplyId,
         Jobs _job
     ) external view {
-        if (_neandersmol.ownerOf(_tokenId) != msg.sender)
-            revert Lib.NotYourToken();
-        if (_neandersmol.getCommonSense(_tokenId) > 99) revert Lib.CsToHigh();
-        if (!validateTokenId(_supplyId, _job))
-            revert Lib.InvalidTokenForThisJob();
+        if (_neandersmol.ownerOf(_tokenId) != msg.sender) revert NotYourToken();
+        if (_neandersmol.getCommonSense(_tokenId) > 99) revert CsToHigh();
+        if (!validateTokenId(_supplyId, _job)) revert InvalidTokenForThisJob();
     }
 
     function validateTokenId(

@@ -53,6 +53,7 @@ contract Phase2 {
     ) external {
         uint256 i;
         checkLength(_tokenId, _lockTime);
+        if (_lockTime.length != _ground.length) revert Lib.LengthsNotEqual();
         if (!pits.validation()) revert Lib.DevelopmentGroundIsLocked();
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
@@ -83,19 +84,20 @@ contract Phase2 {
         uint256[] calldata _tokenId
     ) external {
         if (!pits.validation()) revert Lib.DevelopmentGroundIsLocked();
+        checkLength(_amount, _tokenId);
         uint256 i;
         for (; i < _amount.length; ) {
-            uint256 tokenId = _tokenId[i];
-            uint256 amount = _amount[i];
-            Lib.DevelopmentGround storage token = developmentGround[tokenId];
+            (uint256 tokenId, uint256 amount) = (_tokenId[i], _amount[i]);
+            Lib.DevelopmentGround storage devGround = developmentGround[
+                tokenId
+            ];
             if (bones.balanceOf(msg.sender) < amount)
                 revert Lib.BalanceIsInsufficient();
-            if (token.owner != msg.sender)
+            if (devGround.owner != msg.sender)
                 revert Lib.TokenNotInDevelopementGround();
-
             if (amount % MINIMUM_BONE_STAKE != 0) revert Lib.WrongMultiple();
             bones.transferFrom(msg.sender, address(this), amount);
-            updateDevelopmentGround(token, tokenId, amount);
+            updateDevelopmentGround(devGround, tokenId, amount);
             emit StakeBonesInDevelopmentGround(msg.sender, amount, tokenId);
             unchecked {
                 ++i;

@@ -98,11 +98,43 @@ describe("test phase two", () => {
     const blockBefore = await ethers.provider.getBlock(
       txRes.logs[0].blockNumber
     );
+    expect(txRes).to.emit("EnterDevelopmentGround");
     const info = await phaseII.getDevelopmentGroundInfo(1);
     expect(info.owner).to.equal(owner.address);
     expect(info.lockPeriod).to.equal(toDays(50));
     expect(info.lockTime).to.equal(blockBefore.timestamp);
     expect((await phaseII.getDevelopmentGroundInfo(3)).ground).to.equal(1);
+  });
+  it("stake bones in development ground", async () => {
+    await expect(
+      phaseII.stakeBonesInDevelopmentGround([toWei("1009")], [1])
+    ).to.be.revertedWith("DevelopmentGroundIsLocked");
+    await stakeInPit();
+    await expect(
+      phaseII.stakeBonesInDevelopmentGround([toWei("1009")], [1, 2])
+    ).to.be.revertedWith("LengthsNotEqual");
+    await expect(
+      phaseII
+        .connect(player)
+        .stakeBonesInDevelopmentGround([toWei("1000")], [2])
+    ).to.be.revertedWith("BalanceIsInsufficient");
+    await expect(
+      phaseII.stakeBonesInDevelopmentGround([toWei("1000")], [1])
+    ).to.be.revertedWith("TokenNotInDevelopementGround");
+    await expect(
+      phaseII.stakeBonesInDevelopmentGround([toWei("1001")], [1])
+    ).to.be.revertedWith("TokenNotInDevelopementGround");
+    await phaseII.enterDevelopmentGround([1], [toDays(50)], [1]);
+    await expect(
+      phaseII.stakeBonesInDevelopmentGround([toWei("1001")], [1])
+    ).to.be.revertedWith("WrongMultiple");
+    const tx = await phaseII.stakeBonesInDevelopmentGround(
+      [toWei("3000")],
+      [1]
+    );
+    expect(tx).to.emit("StakeBonesInDevelopmentGround");
+    const info = await phaseII.getDevelopmentGroundInfo(1);
+    expect(info.bonesStaked).to.equal(toWei("3000"));
   });
 
   // some test to be done at this point
