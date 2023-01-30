@@ -119,11 +119,8 @@ describe("test phase two", () => {
         .stakeBonesInDevelopmentGround([toWei("1000")], [2])
     ).to.be.revertedWith("BalanceIsInsufficient");
     await expect(
-      phaseII.stakeBonesInDevelopmentGround([toWei("1000")], [1])
-    ).to.be.revertedWith("TokenNotInDevelopementGround");
-    await expect(
       phaseII.stakeBonesInDevelopmentGround([toWei("1001")], [1])
-    ).to.be.revertedWith("TokenNotInDevelopementGround");
+    ).to.be.revertedWith("TokenNotInDevelopmentGround");
     await phaseII.enterDevelopmentGround([1], [toDays(50)], [1]);
     await expect(
       phaseII.stakeBonesInDevelopmentGround([toWei("1001")], [1])
@@ -133,11 +130,28 @@ describe("test phase two", () => {
       [1]
     );
     expect(tx).to.emit("StakeBonesInDevelopmentGround");
+    expect(await bones.balanceOf(phaseII.address)).to.equal(toWei("3000"));
     const info = await phaseII.getDevelopmentGroundInfo(1);
     expect(info.bonesStaked).to.equal(toWei("3000"));
   });
-
-  // some test to be done at this point
+  it("get development ground reward", async () => {
+    await stakeInPit();
+    await phaseII.enterDevelopmentGround([1], [toDays(50)], [1]);
+    await increaseTime(24);
+    expect(await phaseII.getDevelopmentGroundBonesReward(1)).to.equal(
+      toWei("10")
+    );
+    await unstakeFromPit();
+    await increaseTime(48);
+    expect(await phaseII.getDevelopmentGroundBonesReward(1)).to.equal(
+      toWei("10")
+    );
+    await stakeInPit();
+    await increaseTime(48);
+    expect(await phaseII.getDevelopmentGroundBonesReward(1)).to.equal(
+      toWei("30")
+    );
+  });
   it("enter labor ground", async () => {
     await expect(phaseII.enterLaborGround([1], [], [1])).to.be.revertedWith(
       "LengthsNotEqual"

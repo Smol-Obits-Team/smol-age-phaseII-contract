@@ -17,7 +17,7 @@ library Lib {
     error BalanceIsInsufficient();
     error InvalidTokenForThisJob();
     error DevelopmentGroundIsLocked();
-    error TokenNotInDevelopementGround();
+    error TokenNotInDevelopmentGround();
 
     uint256 private constant INCREASE_RATE = 1;
 

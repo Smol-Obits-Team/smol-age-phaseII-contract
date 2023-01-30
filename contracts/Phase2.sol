@@ -94,7 +94,7 @@ contract Phase2 {
             if (bones.balanceOf(msg.sender) < amount)
                 revert Lib.BalanceIsInsufficient();
             if (devGround.owner != msg.sender)
-                revert Lib.TokenNotInDevelopementGround();
+                revert Lib.TokenNotInDevelopmentGround();
             if (amount % MINIMUM_BONE_STAKE != 0) revert Lib.WrongMultiple();
             bones.transferFrom(msg.sender, address(this), amount);
             updateDevelopmentGround(devGround, tokenId, amount);
