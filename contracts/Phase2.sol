@@ -18,8 +18,6 @@ contract Phase2 {
 
     uint256 private constant TO_WEI = 10 ** 18;
 
-    uint256 private constant INCREASE_RATE = 1;
-
     uint256 private constant MINIMUM_BONE_STAKE = 1000 * 10 ** 18;
 
     mapping(uint256 => Lib.Caves) private caves;
@@ -55,17 +53,18 @@ contract Phase2 {
     ) external {
         uint256 i;
         checkLength(_tokenId, _lockTime);
+        if (!pits.validation()) revert Lib.DevelopmentGroundIsLocked();
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             Lib.DevelopmentGround storage token = developmentGround[tokenId];
-            Lib.enterDevelopmentGround(
-                token,
-                address(neandersmol),
-                address(pits),
-                tokenId,
-                lockTime,
-                _ground[i]
-            );
+            Lib.enterDevelopmentGround(neandersmol, pits, tokenId, lockTime);
+            neandersmol.transferFrom(msg.sender, address(this), tokenId);
+            token.owner = msg.sender;
+            token.lockTime = uint128(block.timestamp);
+            token.lockPeriod = uint48(lockTime);
+            token.lastRewardTime = uint128(block.timestamp);
+            token.ground = _ground[i];
+            token.currentLockPeriod = pits.getTimeOut();
 
             emit EnterDevelopmentGround(
                 msg.sender,
@@ -128,7 +127,7 @@ contract Phase2 {
         uint256 _tokenId
     ) public view returns (uint256) {
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        return Lib.getDevelopmentGroundBonesReward(token, address(pits));
+        return Lib.getDevelopmentGroundBonesReward(token, pits);
     }
 
     function leaveDevelopmentGround(uint256 _tokenId) external {
@@ -225,24 +224,15 @@ contract Phase2 {
     ) public view returns (uint256) {
         // make sure bones staked is more than 30% the total supply
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        uint256 amount;
-        for (uint256 i = 1; i <= token.amountPosition; ) {
-            if (trackTime[_tokenId][i] == 0) {
-                amount = 0;
-            } else {
-                uint256 time = (block.timestamp - trackTime[_tokenId][i]) /
-                    1 days;
-                uint256 stakedAmount = trackToken[_tokenId][
-                    trackTime[_tokenId][i]
-                ];
-                amount += (INCREASE_RATE * time * stakedAmount * 10 ** 15);
-            }
-            unchecked {
-                ++i;
-            }
-        }
-        return 0;
-        // return calculateFinalReward(amount);
+
+        return
+            Lib.calculatePrimarySkill(
+                token,
+                _tokenId,
+                pits,
+                trackTime,
+                trackToken
+            );
     }
 
     function claimDevelopementGroundBonesReward(
@@ -343,14 +333,9 @@ contract Phase2 {
         ) revert Lib.LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ) {
-            uint256 supplyId = _supplyId[i];
-            uint256 tokenId = _tokenId[i];
+            (uint256 tokenId, uint256 supplyId) = (_tokenId[i], _supplyId[i]);
             Lib.LaborGround storage labor = laborGround[tokenId];
-            if (neandersmol.ownerOf(tokenId) != msg.sender)
-                revert Lib.NotYourToken();
-            if (neandersmol.getCommonSense(tokenId) > 99) revert Lib.CsToHigh();
-            if (!validateTokenId(supplyId, _job[i]))
-                revert Lib.InvalidTokenForThisJob();
+            Lib.enterLaborGround(neandersmol, tokenId, supplyId, _job[i]);
             supplies.safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -473,8 +458,6 @@ contract Phase2 {
             );
             laborGround[_tokenId].supplyId = 0;
         }
-
-        return;
     }
 
     function leaveLaborGround(uint256[] calldata _tokenId) external {

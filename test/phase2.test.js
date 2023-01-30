@@ -156,12 +156,12 @@ describe("test phase two", () => {
     await phaseII.bringInAnimalsToLaborGround([4, 2], [0, 2]);
     // token 4 either get 1 or 4
     // token 2 either gets 2 or 5
-    await expect(phaseII.claimCollectable(4)).to.be.revertedWith(
+    await expect(phaseII.claimCollectables([4])).to.be.revertedWith(
       "CannotClaimNow"
     );
     await increaseTime(24 * 3);
-    await phaseII.claimCollectable(4);
-    await phaseII.claimCollectable(2);
+    await phaseII.claimCollectables([4]);
+    await phaseII.claimCollectables([2]);
   });
   it("leave labor ground", async () => {
     await phaseII.enterLaborGround([4, 2], [1, 2], [0, 1]);

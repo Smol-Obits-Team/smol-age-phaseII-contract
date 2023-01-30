@@ -22,16 +22,21 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     consumables.address,
     neandersmol.address,
   ];
-  const phase2 = await deploy("Phase2", {
-    from: deployer,
-    args,
-    libraries: {
-      Rewards: helperLibrary.address,
-    },
-    log: true,
-  });
 
-  log(`Phase two contract successfully deployed to ${phase2.address}`);
+  try {
+    const phase2 = await deploy("Phase2", {
+      from: deployer,
+      args,
+      libraries: {
+        Lib: helperLibrary.address,
+      },
+      log: true,
+    });
+
+    log(`Phase two contract successfully deployed to ${phase2.address}`);
+  } catch (e) {
+    console.log(e);
+  }
 };
 
 module.exports.tags = ["all", "phase2"];
