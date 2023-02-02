@@ -162,13 +162,21 @@ describe("test phase two", () => {
       [toDays(50), toDays(150)],
       [0, 1]
     );
-    await phaseII.stakeBonesInDevelopmentGround(
-      [toWei("1000"), toWei("2000")],
-      [1, 3]
+    await phaseII.stakeBonesInDevelopmentGround([toWei("1000")], [1]);
+    await increaseTime(24);
+    await phaseII.stakeBonesInDevelopmentGround([toWei("2000")], [3]);
+    await increaseTime(24 * 29);
+    const tx  = await phaseII.removeBones([1, 3], [true, false]);
+    expect((await phaseII.getDevelopmentGroundInfo(3)).bonesStaked).to.equal(
+      toWei("2000")
     );
-    await phaseII.removeBones([1, 3], [false, true]);
+    await phaseII.removeBones([3], [true]);
+    expect(
+      await bones.balanceOf("0x0000000000000000000000000000000000000001")
+    ).to.equal(toWei("1000"));
+    expect(tx).to.emit("RemoveBones")
   });
- 
+
   it("enter labor ground", async () => {
     await expect(phaseII.enterLaborGround([1], [], [1])).to.be.revertedWith(
       "LengthsNotEqual"

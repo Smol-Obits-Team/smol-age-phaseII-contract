@@ -145,7 +145,8 @@ contract Phase2 {
         uint256 amount;
         uint48 count;
         for (; i <= token.amountPosition; ++i) {
-            // developPrimarySkill(_tokenId);
+            // developPrimarySkill(_tokenId); -> dont forget this
+            
             uint256 time = trackTime[_tokenId][i];
             uint256 prev = trackTime[_tokenId][i + 1];
             /**
@@ -186,8 +187,9 @@ contract Phase2 {
         } else {
             developmentGround[_tokenId].bonesStaked -= amount;
         }
-
-        if (!bones.transfer(msg.sender, amount)) revert Lib.TransferFailed();
+        if (amount != 0)
+            if (!bones.transfer(msg.sender, amount))
+                revert Lib.TransferFailed();
 
         emit RemoveBones(msg.sender, _tokenId, amount);
     }
