@@ -23,7 +23,8 @@ contract Pits {
     }
 
     function stakeBonesInYard(uint256 _amount) external {
-        require(bones.balanceOf(msg.sender) >= _amount, "Balance is low");
+        if (bones.balanceOf(msg.sender) < _amount)
+            revert Lib.BalanceIsInsufficient();
         uint256 bonesBalance = bonesStaked;
         bones.transferFrom(msg.sender, address(this), _amount);
         balance[msg.sender] += _amount;
@@ -105,7 +106,7 @@ contract Pits {
             bonesStaked < (bones.totalSupply() * 3) / 10
         ) timeOut = block.timestamp;
 
-        require(bones.transfer(msg.sender, _amount));
+        if (!bones.transfer(msg.sender, _amount)) revert Lib.TransferFailed();
     }
 
     function minimumBonesRequired() internal view returns (uint256) {

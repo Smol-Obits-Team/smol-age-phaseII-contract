@@ -152,6 +152,23 @@ describe("test phase two", () => {
       toWei("30")
     );
   });
+  it("remove bones from development ground", async () => {
+    await expect(phaseII.removeBones([1], [true, false])).to.be.revertedWith(
+      "LengthsNotEqual"
+    );
+    await stakeInPit();
+    await phaseII.enterDevelopmentGround(
+      [1, 3],
+      [toDays(50), toDays(150)],
+      [0, 1]
+    );
+    await phaseII.stakeBonesInDevelopmentGround(
+      [toWei("1000"), toWei("2000")],
+      [1, 3]
+    );
+    await phaseII.removeBones([1, 3], [false, true]);
+  });
+ 
   it("enter labor ground", async () => {
     await expect(phaseII.enterLaborGround([1], [], [1])).to.be.revertedWith(
       "LengthsNotEqual"
@@ -284,20 +301,20 @@ describe("test phase two", () => {
     await increaseTime(24);
 
     const res = await phaseII.getDevelopmentGroundBonesReward(1);
-    console.log(res.toString()); // 10 1 day
+    // console.log(res.toString()); // 10 1 day
     await unstakeFromPit();
     await increaseTime(48);
     const resII = await phaseII.getDevelopmentGroundBonesReward(1);
-    console.log(resII.toString()); // 10 3 days
+    // console.log(resII.toString()); // 10 3 days
     await stakeInPit();
     await increaseTime(48);
     const resIII = await phaseII.getDevelopmentGroundBonesReward(1);
-    console.log(resIII.toString()); // 30 5 days
+    // console.log(resIII.toString()); // 30 5 days
     const balance = await bones.balanceOf(pits.address);
     await pits.removeBonesFromYard(balance);
     await stakeInPit();
     await increaseTime(120);
     const resIV = await phaseII.getDevelopmentGroundBonesReward(1);
-    console.log(resIV.toString()); // 80 7 days
+    // console.log(resIV.toString()); // 80 7 days
   });
 });

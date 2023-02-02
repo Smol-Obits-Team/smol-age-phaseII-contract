@@ -125,24 +125,6 @@ contract Phase2 {
         emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
     }
 
-    function getDevelopmentGroundBonesReward(
-        uint256 _tokenId
-    ) public view returns (uint256) {
-        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        return Lib.getDevelopmentGroundBonesReward(token, pits);
-    }
-
-    function leaveDevelopmentGround(uint256 _tokenId) external {
-        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        if (block.timestamp < token.lockTime + token.lockPeriod)
-            revert Lib.NeandersmolsIsLocked();
-        if (token.owner != msg.sender) revert Lib.NotYourToken();
-        removeBones(_tokenId, true);
-        delete developmentGround[_tokenId];
-        neandersmol.transferFrom(address(this), msg.sender, _tokenId);
-        emit LeaveDevelopmentGround(msg.sender, _tokenId);
-    }
-
     function removeBones(
         uint256[] calldata _tokenId,
         bool[] calldata _all
@@ -162,10 +144,14 @@ contract Phase2 {
         uint256 i = 1;
         uint256 amount;
         uint48 count;
-        for (; i <= token.amountPosition; ) {
-            developPrimarySkill(_tokenId);
+        for (; i <= token.amountPosition; ++i) {
+            // developPrimarySkill(_tokenId);
             uint256 time = trackTime[_tokenId][i];
             uint256 prev = trackTime[_tokenId][i + 1];
+            /**
+             * init----------------unlock-----------current time
+             * currenttime > init + unlock✅
+             */
             if (block.timestamp < time + 30 days && !_all) continue;
             block.timestamp < time + 30 days && _all
                 ? amount += trackToken[_tokenId][time] / 2
@@ -186,7 +172,6 @@ contract Phase2 {
             trackToken[_tokenId][time] = 0;
             unchecked {
                 ++count;
-                ++i;
             }
         }
         unchecked {
@@ -264,6 +249,24 @@ contract Phase2 {
                 ++i;
             }
         }
+    }
+
+    function getDevelopmentGroundBonesReward(
+        uint256 _tokenId
+    ) public view returns (uint256) {
+        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
+        return Lib.getDevelopmentGroundBonesReward(token, pits);
+    }
+
+    function leaveDevelopmentGround(uint256 _tokenId) external {
+        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
+        if (block.timestamp < token.lockTime + token.lockPeriod)
+            revert Lib.NeandersmolsIsLocked();
+        if (token.owner != msg.sender) revert Lib.NotYourToken();
+        removeBones(_tokenId, true);
+        delete developmentGround[_tokenId];
+        neandersmol.transferFrom(address(this), msg.sender, _tokenId);
+        emit LeaveDevelopmentGround(msg.sender, _tokenId);
     }
 
     function enterCaves(uint256[] calldata _tokenId) external {
@@ -509,15 +512,16 @@ contract Phase2 {
             ) % _num;
     }
 
+    // still check this
     function updateDevelopmentGround(
-        Lib.DevelopmentGround storage _token,
+        Lib.DevelopmentGround storage _devGround,
         uint256 _tokenId,
         uint256 _amount
     ) internal {
-        _token.bonesStaked += _amount;
-        ++_token.amountPosition;
+        _devGround.bonesStaked += _amount;
+        ++_devGround.amountPosition;
         trackToken[_tokenId][block.timestamp] = _amount;
-        trackTime[_tokenId][_token.amountPosition] = block.timestamp;
+        trackTime[_tokenId][_devGround.amountPosition] = block.timestamp;
     }
 
     function checkPossibleClaims(
