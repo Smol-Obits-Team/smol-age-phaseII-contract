@@ -45,7 +45,6 @@ contract Phase2 {
     }
 
     /// @notice this function only works for skilled Neandersmols
-
     function enterDevelopmentGround(
         uint256[] calldata _tokenId,
         uint256[] calldata _lockTime,
@@ -105,26 +104,6 @@ contract Phase2 {
         }
     }
 
-    function stakeBonesInDevelopmentGround(
-        uint256 _tokenId,
-        uint256 _amount
-    ) internal {
-        Lib.DevelopmentGround storage token = developmentGround[_tokenId];
-        uint256 newAmount;
-        uint256 remainder = _amount % MINIMUM_BONE_STAKE;
-        if (remainder == _amount) return;
-        if (remainder != 0) {
-            newAmount = _amount - remainder;
-            bones.mint(msg.sender, remainder);
-            bones.mint(address(this), newAmount);
-        } else {
-            newAmount = _amount;
-            bones.mint(address(this), newAmount);
-        }
-        updateDevelopmentGround(token, _tokenId, newAmount);
-        emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
-    }
-
     function removeBones(
         uint256[] calldata _tokenId,
         bool[] calldata _all
@@ -139,6 +118,7 @@ contract Phase2 {
         }
     }
 
+    //@remind check this function again
     function removeBones(uint256 _tokenId, bool _all) internal {
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
         uint256 i = 1;
@@ -146,7 +126,7 @@ contract Phase2 {
         uint48 count;
         for (; i <= token.amountPosition; ++i) {
             // developPrimarySkill(_tokenId); -> dont forget this
-            
+
             uint256 time = trackTime[_tokenId][i];
             uint256 prev = trackTime[_tokenId][i + 1];
             /**
@@ -179,11 +159,13 @@ contract Phase2 {
             developmentGround[_tokenId].amountPosition -= count;
         }
 
+        // this should be if they are removing all and it is less than 30 days
         if (_all) {
             developmentGround[_tokenId].bonesStaked = 0;
-            if (token.bonesStaked - amount != 0)
+            if (token.bonesStaked - amount != 0) {
                 if (!bones.transfer(address(1), token.bonesStaked - amount))
-                    revert Lib.TransferFailed(); // change the address(1)
+                    revert Lib.TransferFailed();
+            } // change the address(1)
         } else {
             developmentGround[_tokenId].bonesStaked -= amount;
         }
@@ -197,7 +179,7 @@ contract Phase2 {
     function developPrimarySkill(uint256 _tokenId) internal {
         // make sure bones staked is more than 50% the total supply
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        uint256 amount = calculatePrimarySkill(_tokenId);
+        uint256 amount = getPrimarySkill(_tokenId);
         Lib.Grounds ground = token.ground;
         if (ground == Lib.Grounds.Chambers) {
             neandersmol.developMystics(_tokenId, amount);
@@ -208,9 +190,7 @@ contract Phase2 {
         }
     }
 
-    function calculatePrimarySkill(
-        uint256 _tokenId
-    ) public view returns (uint256) {
+    function getPrimarySkill(uint256 _tokenId) public view returns (uint256) {
         // make sure bones staked is more than 30% the total supply
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
 
@@ -224,7 +204,7 @@ contract Phase2 {
             );
     }
 
-    function claimDevelopementGroundBonesReward(
+    function claimDevelopmentGroundBonesReward(
         uint256[] calldata _tokenId,
         bool[] calldata _stake
     ) external {
@@ -235,6 +215,7 @@ contract Phase2 {
             Lib.DevelopmentGround memory token = developmentGround[tokenId];
             if (token.owner != msg.sender) revert Lib.NotYourToken();
             uint256 reward = getDevelopmentGroundBonesReward(tokenId);
+            if (reward == 0) revert Lib.ZeroBalanceError();
             developmentGround[tokenId].lastRewardTime = uint128(
                 block.timestamp
             );
@@ -242,7 +223,7 @@ contract Phase2 {
                 ? stakeBonesInDevelopmentGround(tokenId, reward)
                 : bones.mint(msg.sender, reward);
 
-            emit ClaimDevelopementGroundBonesReward(
+            emit ClaimDevelopmentGroundBonesReward(
                 msg.sender,
                 tokenId,
                 _stake[i]
@@ -253,6 +234,26 @@ contract Phase2 {
         }
     }
 
+    function stakeBonesInDevelopmentGround(
+        uint256 _tokenId,
+        uint256 _amount
+    ) internal {
+        Lib.DevelopmentGround storage token = developmentGround[_tokenId];
+        uint256 newAmount;
+        uint256 remainder = _amount % MINIMUM_BONE_STAKE;
+        if (remainder == _amount) revert Lib.WrongMultiple();
+        if (remainder != 0) {
+            newAmount = _amount - remainder;
+            bones.mint(msg.sender, remainder);
+            bones.mint(address(this), newAmount);
+        } else {
+            newAmount = _amount;
+            bones.mint(address(this), newAmount);
+        }
+        updateDevelopmentGround(token, _tokenId, newAmount);
+        emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
+    }
+
     function getDevelopmentGroundBonesReward(
         uint256 _tokenId
     ) public view returns (uint256) {
@@ -260,11 +261,21 @@ contract Phase2 {
         return Lib.getDevelopmentGroundBonesReward(token, pits);
     }
 
-    function leaveDevelopmentGround(uint256 _tokenId) external {
+    function leaveDevelopmentGround(uint256[] calldata _tokenId) external {
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            leaveDevelopmentGround(_tokenId[i]);
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function leaveDevelopmentGround(uint256 _tokenId) internal {
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
+        if (token.owner != msg.sender) revert Lib.NotYourToken();
         if (block.timestamp < token.lockTime + token.lockPeriod)
             revert Lib.NeandersmolsIsLocked();
-        if (token.owner != msg.sender) revert Lib.NotYourToken();
         removeBones(_tokenId, true);
         delete developmentGround[_tokenId];
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
@@ -690,7 +701,7 @@ contract Phase2 {
 
     event EnterCaves(address indexed owner, uint256 indexed tokenId);
 
-    event ClaimDevelopementGroundBonesReward(
+    event ClaimDevelopmentGroundBonesReward(
         address indexed owner,
         uint256 indexed tokenId,
         bool indexed stake

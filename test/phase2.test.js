@@ -134,6 +134,61 @@ describe("test phase two", () => {
     const info = await phaseII.getDevelopmentGroundInfo(1);
     expect(info.bonesStaked).to.equal(toWei("3000"));
   });
+  it("claim bones development ground", async () => {
+    await expect(
+      phaseII.claimDevelopmentGroundBonesReward([1], [true, false])
+    ).to.be.revertedWith("LengthsNotEqual");
+    await expect(
+      phaseII.claimDevelopmentGroundBonesReward([1], [true])
+    ).to.be.revertedWith("NotYourToken");
+    await stakeInPit();
+    await phaseII.enterDevelopmentGround([1], [toDays(50)], [1]);
+    await expect(
+      phaseII.claimDevelopmentGroundBonesReward([1], [true])
+    ).to.be.revertedWith("ZeroBalanceError");
+    await increaseTime(24);
+    const tx = await phaseII.claimDevelopmentGroundBonesReward([1], [false]);
+    const txRes = await tx.wait();
+    const blockBefore = await ethers.provider.getBlock(
+      txRes.logs[0].blockNumber
+    );
+    expect(await bones.totalSupply()).to.equal(
+      toWei((INITIAL_SUPPLY + 10).toString())
+    );
+    expect((await phaseII.getDevelopmentGroundInfo(1)).lastRewardTime).to.equal(
+      blockBefore.timestamp
+    );
+    expect(tx).to.emit("ClaimDevelopmentGroundBonesReward");
+    await stakeInPit();
+    await phaseII.enterDevelopmentGround([3], [toDays(150)], [1]);
+    await increaseTime(72);
+    await expect(
+      phaseII.claimDevelopmentGroundBonesReward([3], [true])
+    ).to.be.revertedWith("WrongMultiple");
+    await increaseTime(24 * 10);
+    const balance = await bones.balanceOf(owner.address);
+
+    await phaseII.claimDevelopmentGroundBonesReward([3], [true]);
+
+    expect((await phaseII.getDevelopmentGroundInfo(3)).bonesStaked).to.equal(
+      toWei("1000")
+    );
+    expect(await bones.totalSupply()).to.equal(
+      toWei((INITIAL_SUPPLY + 1310).toString())
+    );
+
+    expect(await bones.balanceOf(owner.address)).to.equal(
+      balance.add(toWei("300"))
+    );
+
+    await increaseTime(24 * 10);
+    const txR = await phaseII.claimDevelopmentGroundBonesReward([3], [true]);
+
+    expect((await phaseII.getDevelopmentGroundInfo(3)).bonesStaked).to.equal(
+      toWei("2000")
+    );
+    expect(txR).to.emit("StakeBonesInDevelopmentGround");
+  });
   it("get development ground reward", async () => {
     await stakeInPit();
     await phaseII.enterDevelopmentGround([1], [toDays(50)], [1]);
@@ -152,6 +207,24 @@ describe("test phase two", () => {
       toWei("30")
     );
   });
+  it("leave development ground", async () => {
+    await expect(phaseII.leaveDevelopmentGround([1])).to.be.revertedWith(
+      "NotYourToken"
+    );
+    await stakeInPit();
+    await phaseII.enterDevelopmentGround([1], [toDays(50)], [1]);
+    await expect(phaseII.leaveDevelopmentGround([1])).to.be.revertedWith(
+      "NeandersmolsIsLocked"
+    );
+    await increaseTime(100 * 24);
+    await phaseII.claimDevelopmentGroundBonesReward([1], [true]);
+    const bal = await bones.balanceOf(owner.address);
+    await increaseTime(30 * 24);
+    await phaseII.leaveDevelopmentGround([1]);
+    expect(await bones.balanceOf(owner.address)).to.equal(
+      bal.add(toWei("1000"))
+    );
+  });
   it("remove bones from development ground", async () => {
     await expect(phaseII.removeBones([1], [true, false])).to.be.revertedWith(
       "LengthsNotEqual"
@@ -166,7 +239,7 @@ describe("test phase two", () => {
     await increaseTime(24);
     await phaseII.stakeBonesInDevelopmentGround([toWei("2000")], [3]);
     await increaseTime(24 * 29);
-    const tx  = await phaseII.removeBones([1, 3], [true, false]);
+    const tx = await phaseII.removeBones([1, 3], [true, false]);
     expect((await phaseII.getDevelopmentGroundInfo(3)).bonesStaked).to.equal(
       toWei("2000")
     );
@@ -174,7 +247,26 @@ describe("test phase two", () => {
     expect(
       await bones.balanceOf("0x0000000000000000000000000000000000000001")
     ).to.equal(toWei("1000"));
-    expect(tx).to.emit("RemoveBones")
+    expect(tx).to.emit("RemoveBones");
+  });
+
+  it("get primary skill", async () => {
+    await stakeInPit();
+    await phaseII.enterDevelopmentGround(
+      [1, 3],
+      [toDays(50), toDays(150)],
+      [0, 1]
+    );
+    await phaseII.stakeBonesInDevelopmentGround([toWei("1000")], [1]);
+    await increaseTime(24);
+    expect(await phaseII.getPrimarySkill(1)).to.equal(toWei("0.1"));
+    await unstakeFromPit();
+    await increaseTime(72);
+    await phaseII.getPrimarySkill(1);
+    expect(await phaseII.getPrimarySkill(1)).to.equal(toWei("0.1"));
+    await stakeInPit();
+    await increaseTime(72);
+    expect(await phaseII.getPrimarySkill(1)).to.equal(toWei("0.4"));
   });
 
   it("enter labor ground", async () => {

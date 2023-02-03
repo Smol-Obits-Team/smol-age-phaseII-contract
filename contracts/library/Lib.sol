@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
+import "hardhat/console.sol";
 import {IPits} from "../interfaces/IPits.sol";
 import {INeandersmol} from "../interfaces/INeandersmol.sol";
 
@@ -73,9 +74,11 @@ library Lib {
 
         uint256 time = (block.timestamp - _token.lastRewardTime) / 1 days;
         return
-            calculateFinalReward(_token, _pits, rewardRate * time) * 10 ** 18;
+            (rewardRate * time - calculateFinalReward(_token, _pits)) *
+            10 ** 18;
     }
 
+    // check if this can be fixed to reduce gas cost
     function calculatePrimarySkill(
         DevelopmentGround memory token,
         uint256 _tokenId,
@@ -94,28 +97,25 @@ library Lib {
                 uint256 stakedAmount = trackToken[_tokenId][
                     trackTime[_tokenId][i]
                 ];
-                amount += (INCREASE_RATE * time * stakedAmount * 10 ** 15);
+                amount += (INCREASE_RATE * time * stakedAmount);
             }
             unchecked {
                 ++i;
             }
         }
-        return calculateFinalReward(token, _pits, 11);
+        return amount / 10 ** 4 - calculateFinalReward(token, _pits) * 10 ** 16;
     }
 
     function calculateFinalReward(
         DevelopmentGround memory token,
-        IPits _pits,
-        uint256 _amount
+        IPits _pits
     ) internal view returns (uint256) {
         uint256 amount;
         if (token.currentLockPeriod != _pits.getTimeOut()) {
             uint256 howLong = (block.timestamp - _pits.getTimeOut()) / 1 days;
-            amount =
-                (_pits.getTotalDaysOff() -
-                    _pits.getDaysOff(token.currentLockPeriod) +
-                    howLong) *
-                10;
+            amount = (_pits.getTotalDaysOff() -
+                _pits.getDaysOff(token.currentLockPeriod) +
+                howLong);
         }
         if (token.currentLockPeriod == 0) {
             uint256 off;
@@ -123,9 +123,9 @@ library Lib {
                 ? off = (block.timestamp - _pits.getTimeOut()) / 1 days
                 : 0;
             if (_pits.validation()) off = _pits.getTotalDaysOff();
-            amount = off * 10;
+            amount = off;
         }
-        return _amount - amount;
+        return amount * 10;
     }
 
     function getRewardRate(
