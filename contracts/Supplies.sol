@@ -26,11 +26,11 @@ contract Supplies is ERC1155 {
     }
 
     function name() external pure returns (string memory) {
-        return "";
+        return "Supplies";
     }
 
     function symbol() external pure returns (string memory) {
-        return "";
+        return "supplies";
     }
 
     function uri(

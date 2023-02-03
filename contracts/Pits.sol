@@ -11,8 +11,6 @@ contract Pits {
 
     uint256 private timeOut;
 
-    uint256 private timeBelowMinimum;
-
     uint256 private totalDaysOff;
 
     mapping(address => uint256) private balance;
@@ -45,27 +43,6 @@ contract Pits {
 
     function getDaysOff(uint256 _timestamp) external view returns (uint256) {
         return trackDaysOff[_timestamp];
-    }
-
-    /**
-     * finalAmount = totalRewardFromOnSet - (rewardPerDay * TF)
-     * how do we calculate all the days off??
-     * T0 = (block.timestamp - LT0) /  1 days <==> This should only set if stake was >minimum then removed
-     * T1 = (block.timestamp - LT1) /  1 days <==> This should only set if stake was >minimum the removed
-     * daysOff = TF = T0 + T1 + ...... + Tn;
-     * How to set the lock time at the correct interval??
-     * To set LT0 after a certain removal that satisfies the condition, update the timestamp
-     * if after adding more bones now > minimum
-     * 0 -> 1 days <==> 10 default
-     * 1 -> 3 days <==> 10 (3*10) - (10*2) -  2 days off
-     * 3 -> 6 days <==> 40 (6*10) - (2*10)
-     * 6 -> 8 days <==> 40 default -  2 days off
-     * 8 -> 10 days <==> 60 (10*10) - (10*4)
-     *
-     */
-
-    function getPeriod() internal view returns (uint256) {
-        return (block.timestamp - timeBelowMinimum) / 1 days;
     }
 
     /**
@@ -127,9 +104,5 @@ contract Pits {
 
     function validation() public view returns (bool) {
         return bonesStaked >= (bones.totalSupply() * 3) / 10;
-    }
-
-    function getTimeBelowMinimum() external view returns (uint256) {
-        return timeBelowMinimum;
     }
 }

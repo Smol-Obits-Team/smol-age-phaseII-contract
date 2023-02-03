@@ -30,7 +30,6 @@ describe("test phase two", () => {
   };
 
   const unstakeFromPit = async () => {
-    const balance = await bones.balanceOf(owner.address);
     await pits.removeBonesFromYard(toWei((INITIAL_SUPPLY / 10).toString()));
   };
 
@@ -55,6 +54,11 @@ describe("test phase two", () => {
   });
 
   it("enter pits", async () => {
+    const balance = await bones.balanceOf(owner.address);
+    await bones.approve(pits.address, balance);
+    await expect(
+      pits.stakeBonesInYard(toWei((INITIAL_SUPPLY + 1).toString()))
+    ).to.be.revertedWith("BalanceIsInsufficient");
     await stakeInPit();
     expect(await pits.getBonesStaked(owner.address)).to.equal(toWei("3000000"));
     expect(await pits.getTotalBonesStaked()).to.equal(toWei("3000000"));
@@ -220,10 +224,11 @@ describe("test phase two", () => {
     await phaseII.claimDevelopmentGroundBonesReward([1], [true]);
     const bal = await bones.balanceOf(owner.address);
     await increaseTime(30 * 24);
-    await phaseII.leaveDevelopmentGround([1]);
+    const tx = await phaseII.leaveDevelopmentGround([1]);
     expect(await bones.balanceOf(owner.address)).to.equal(
       bal.add(toWei("1000"))
     );
+    expect(tx).to.emit("LeaveDevelopmentGround");
   });
   it("remove bones from development ground", async () => {
     await expect(phaseII.removeBones([1], [true, false])).to.be.revertedWith(
@@ -314,6 +319,17 @@ describe("test phase two", () => {
     await phaseII.bringInAnimalsToLaborGround([2], [0]);
     expect((await phaseII.getLaborGroundInfo(2)).animalId).to.equal(1);
   });
+  it("remove animals from labor ground", async () => {
+    await phaseII.enterLaborGround([2], [3], [2]);
+    await phaseII.bringInAnimalsToLaborGround([2], [0]);
+    await expect(
+      phaseII.removeAnimalsFromLaborGround([1], [1])
+    ).to.be.revertedWith("NotYourToken");
+    await expect(
+      phaseII.removeAnimalsFromLaborGround([2], [1])
+    ).to.be.revertedWith("NotYourToken");
+    await phaseII.removeAnimalsFromLaborGround([2], [0]);
+  });
   it("claim collectables and from labor ground", async () => {
     await phaseII.enterLaborGround([4, 2], [1, 2], [0, 1]);
     await phaseII.bringInAnimalsToLaborGround([4, 2], [0, 2]);
@@ -391,30 +407,23 @@ describe("test phase two", () => {
       toWei((INITIAL_SUPPLY + 1000).toString())
     );
   });
-  it("calculate reward", async () => {
-    await stakeInPit();
-    await phaseII.enterDevelopmentGround(
-      [1, 3],
-      [toDays(50), toDays(150)],
-      [0, 1]
-    );
-    await increaseTime(24);
-
-    const res = await phaseII.getDevelopmentGroundBonesReward(1);
-    // console.log(res.toString()); // 10 1 day
-    await unstakeFromPit();
-    await increaseTime(48);
-    const resII = await phaseII.getDevelopmentGroundBonesReward(1);
-    // console.log(resII.toString()); // 10 3 days
-    await stakeInPit();
-    await increaseTime(48);
-    const resIII = await phaseII.getDevelopmentGroundBonesReward(1);
-    // console.log(resIII.toString()); // 30 5 days
-    const balance = await bones.balanceOf(pits.address);
-    await pits.removeBonesFromYard(balance);
-    await stakeInPit();
-    await increaseTime(120);
-    const resIV = await phaseII.getDevelopmentGroundBonesReward(1);
-    // console.log(resIV.toString()); // 80 7 days
+  it("get address", async () => {
+    const [a, b, c, d, e, f] = await phaseII.getAddress();
+    expect(a).to.equal(pits.address);
+    expect(b).to.equal(bones.address);
+    expect(c).to.equal(animals.address);
+    expect(d).to.equal(supplies.address);
+    expect(e).to.equal(consumables.address);
+    expect(f).to.equal(neandersmol.address);
+  });
+  it("get suppliies info", async () => {
+    expect(await supplies.name()).to.equal("Supplies");
+    expect(await supplies.symbol()).to.equal("supplies");
+    expect(await supplies.uri(1)).to.equal("");
+  });
+  it("get consumables info", async () => {
+    expect(await consumables.name()).to.equal("Consumables");
+    expect(await consumables.symbol()).to.equal("");
+    expect(await consumables.uri(1)).to.equal("");
   });
 });

@@ -111,6 +111,7 @@ contract Phase2 {
         if (_tokenId.length != _all.length) revert Lib.LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ) {
+            developPrimarySkill(_tokenId[i]);
             removeBones(_tokenId[i], _all[i]);
             unchecked {
                 ++i;
@@ -121,44 +122,42 @@ contract Phase2 {
     //@remind check this function again
     function removeBones(uint256 _tokenId, bool _all) internal {
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
+
         uint256 i = 1;
         uint256 amount;
         uint48 count;
-        for (; i <= token.amountPosition; ++i) {
-            // developPrimarySkill(_tokenId); -> dont forget this
+        unchecked {
+            for (; i <= token.amountPosition; ++i) {
+                uint256 time = trackTime[_tokenId][i];
+                uint256 prev = trackTime[_tokenId][i + 1];
+                /**
+                 * init----------------unlock-----------current time
+                 * currenttime > init + unlock✅
+                 */
+                if (block.timestamp < time + 30 days && !_all) continue;
+                block.timestamp < time + 30 days && _all
+                    ? amount += trackToken[_tokenId][time] / 2
+                    : amount += trackToken[_tokenId][time];
 
-            uint256 time = trackTime[_tokenId][i];
-            uint256 prev = trackTime[_tokenId][i + 1];
-            /**
-             * init----------------unlock-----------current time
-             * currenttime > init + unlock✅
-             */
-            if (block.timestamp < time + 30 days && !_all) continue;
-            block.timestamp < time + 30 days && _all
-                ? amount += trackToken[_tokenId][time] / 2
-                : amount += trackToken[_tokenId][time];
+                // 1000 - 1
+                // 1000 - 2 remove this -> trackTime[_tokenId][2] = 0
+                // 1000 - 3 remove this -> trackTime[_tokenId][3] = this time
+                // 1000 - 4 takes this time
+                // 1000 - 5
+                /**
+                 * uint prev = trackTime[_tokenId][i+1];
+                 * trackTime[_tokenId][i] = prev
+                 */
+                _all || token.amountPosition == 1
+                    ? trackTime[_tokenId][i] = 0
+                    : trackTime[_tokenId][i] = prev;
+                trackToken[_tokenId][time] = 0;
 
-            // 1000 - 1
-            // 1000 - 2 remove this -> trackTime[_tokenId][2] = 0
-            // 1000 - 3 remove this -> trackTime[_tokenId][3] = this time
-            // 1000 - 4 takes this time
-            // 1000 - 5
-            /**
-             * uint prev = trackTime[_tokenId][i+1];
-             * trackTime[_tokenId][i] = prev
-             */
-            _all || token.amountPosition == 1
-                ? trackTime[_tokenId][i] = 0
-                : trackTime[_tokenId][i] = prev;
-            trackToken[_tokenId][time] = 0;
-            unchecked {
                 ++count;
             }
-        }
-        unchecked {
+
             developmentGround[_tokenId].amountPosition -= count;
         }
-
         // this should be if they are removing all and it is less than 30 days
         if (_all) {
             developmentGround[_tokenId].bonesStaked = 0;
@@ -345,10 +344,8 @@ contract Phase2 {
         uint256[] calldata _supplyId,
         Lib.Jobs[] calldata _job
     ) external {
-        if (
-            _tokenId.length != _supplyId.length ||
-            _supplyId.length != _job.length
-        ) revert Lib.LengthsNotEqual();
+        checkLength(_tokenId, _supplyId);
+        if (_supplyId.length != _job.length) revert Lib.LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 supplyId) = (_tokenId[i], _supplyId[i]);
@@ -366,6 +363,8 @@ contract Phase2 {
             labor.lockTime = uint32(block.timestamp);
             labor.supplyId = uint32(supplyId);
             labor.job = _job[i];
+
+            // emit EnterLaborGround(msg.sender, tokenId, supplyId, _job[i]);
 
             unchecked {
                 ++i;
@@ -392,7 +391,7 @@ contract Phase2 {
                 1,
                 ""
             );
-            labor.animalId = uint32(animalsId) - 1; // added one since animals token id starts from 0
+            labor.animalId = 0; // added one since animals token id starts from 0
             emit RemoveAnimalsFromLaborGround(
                 msg.sender,
                 _tokenId[i],
@@ -441,9 +440,9 @@ contract Phase2 {
         if (block.timestamp < labor.lockTime + 3 days)
             revert Lib.CannotClaimNow();
         uint256 consumablesTokenId = checkPossibleClaims(_tokenId, labor);
-        if (consumablesTokenId != 0) {
+        if (consumablesTokenId != 0)
             consumables.mint(msg.sender, consumablesTokenId, 1);
-        }
+
         laborGround[_tokenId].supplyId = 0;
         // set time to zero here
         emit ClaimCollectable(msg.sender, _tokenId);
@@ -616,13 +615,6 @@ contract Phase2 {
         return Lib.timeLeftToLeaveCaveInDays(cave);
     }
 
-    function lockTimeExists(uint256 _lockTime) internal pure returns (bool) {
-        return
-            _lockTime == 50 days ||
-            _lockTime == 100 days ||
-            _lockTime == 150 days;
-    }
-
     function getConsumablesTokenId(
         Lib.Jobs _job
     ) internal pure returns (uint256 tokenIdOne, uint256 tokenIdTwo) {
@@ -636,23 +628,6 @@ contract Phase2 {
         uint256[] calldata _animalsId
     ) internal pure {
         if (_tokenId.length != _animalsId.length) revert Lib.LengthsNotEqual();
-    }
-
-    function getRewardRate(
-        uint _lockTime
-    ) internal pure returns (uint256 rewardRate) {
-        if (_lockTime == 50 days) rewardRate = 10;
-        if (_lockTime == 100 days) rewardRate = 50;
-        if (_lockTime == 150 days) rewardRate = 100;
-    }
-
-    function validateTokenId(
-        uint256 _tokenId,
-        Lib.Jobs _job
-    ) internal pure returns (bool res) {
-        if (_job == Lib.Jobs.Digging) return _tokenId == 1;
-        if (_job == Lib.Jobs.Foraging) return _tokenId == 2;
-        if (_job == Lib.Jobs.Mining) return _tokenId == 3;
     }
 
     function onERC1155Received(
@@ -745,6 +720,13 @@ contract Phase2 {
         address indexed owner,
         uint256 indexed tokenId,
         uint256 indexed animalsId
+    );
+
+    event EnterLaborGround(
+        address indexed owner,
+        uint256 indexed tokenId,
+        uint256 indexed supplyId,
+        Lib.Jobs job
     );
 
     event ClaimCaveReward(
