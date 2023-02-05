@@ -11,6 +11,7 @@ contract mERC721 is ERC721 {
         commonSense[1] = 101;
         commonSense[2] = 98;
         commonSense[3] = 100;
+        commonSense[10] = 100;
         commonSense[16] = 100;
     }
 

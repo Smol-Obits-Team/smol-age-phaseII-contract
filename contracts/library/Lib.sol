@@ -7,9 +7,11 @@ import {INeandersmol} from "../interfaces/INeandersmol.sol";
 library Lib {
     error CsToHigh();
     error NotYourToken();
+    error NotAuthorized();
     error WrongMultiple();
     error CannotClaimNow();
     error TransferFailed();
+    error InvalidTokenId();
     error InvalidLockTime();
     error LengthsNotEqual();
     error ZeroBalanceError();
@@ -58,13 +60,6 @@ library Lib {
         Battlefield
     }
 
-    function timeLeftToLeaveCaveInDays(
-        Caves memory cave
-    ) external view returns (uint256) {
-        if (cave.stakingTime == 0) return 0;
-        return (block.timestamp - cave.stakingTime) / 1 days;
-    }
-
     function getDevelopmentGroundBonesReward(
         DevelopmentGround memory _token,
         IPits _pits
@@ -87,18 +82,13 @@ library Lib {
         mapping(uint256 => mapping(uint256 => uint256)) storage trackToken
     ) external view returns (uint256) {
         // make sure bones staked is more than 30% the total supply
+        if (token.bonesStaked == 0) return 0;
         uint256 amount;
         for (uint256 i = 1; i <= token.amountPosition; ) {
-            if (trackTime[_tokenId][i] == 0) {
-                amount = 0;
-            } else {
-                uint256 time = (block.timestamp - trackTime[_tokenId][i]) /
-                    1 days;
-                uint256 stakedAmount = trackToken[_tokenId][
-                    trackTime[_tokenId][i]
-                ];
-                amount += (INCREASE_RATE * time * stakedAmount);
-            }
+            uint256 time = (block.timestamp - trackTime[_tokenId][i]) / 1 days;
+            uint256 stakedAmount = trackToken[_tokenId][trackTime[_tokenId][i]];
+            amount += (INCREASE_RATE * time * stakedAmount);
+
             unchecked {
                 ++i;
             }
@@ -111,6 +101,7 @@ library Lib {
         IPits _pits
     ) internal view returns (uint256) {
         uint256 amount;
+
         if (token.currentLockPeriod != _pits.getTimeOut()) {
             uint256 howLong = (block.timestamp - _pits.getTimeOut()) / 1 days;
             amount = (_pits.getTotalDaysOff() -

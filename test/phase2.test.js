@@ -48,9 +48,11 @@ describe("test phase two", () => {
     neandersmol.setApprovalForAll(phaseII.address, true);
     const balance = await bones.balanceOf(owner.address);
     await bones.approve(phaseII.address, balance);
+    await supplies.setPhase2Addresss(phaseII.address);
     await supplies.setApprovalForAll(phaseII.address, true);
     await animals.setApprovalForAll(phaseII.address, true);
     await neandersmol.connect(player).mint(1);
+    await consumables.setAllowedAddress(phaseII.address, true);
   });
 
   it("enter pits", async () => {
@@ -240,6 +242,9 @@ describe("test phase two", () => {
       [toDays(50), toDays(150)],
       [0, 1]
     );
+    await expect(phaseII.removeBones([3], [true])).to.be.revertedWith(
+      "ZeroBalanceError"
+    );
     await phaseII.stakeBonesInDevelopmentGround([toWei("1000")], [1]);
     await increaseTime(24);
     await phaseII.stakeBonesInDevelopmentGround([toWei("2000")], [3]);
@@ -258,11 +263,15 @@ describe("test phase two", () => {
   it("get primary skill", async () => {
     await stakeInPit();
     await phaseII.enterDevelopmentGround(
-      [1, 3],
-      [toDays(50), toDays(150)],
-      [0, 1]
+      [1, 3, 10],
+      [toDays(50), toDays(150), toDays(100)],
+      [0, 1, 2]
     );
-    await phaseII.stakeBonesInDevelopmentGround([toWei("1000")], [1]);
+    expect(await phaseII.getPrimarySkill(1)).to.equal("0");
+    await phaseII.stakeBonesInDevelopmentGround(
+      [toWei("1000"), toWei("1000"), toWei("1000")],
+      [1, 3, 10]
+    );
     await increaseTime(24);
     expect(await phaseII.getPrimarySkill(1)).to.equal(toWei("0.1"));
     await unstakeFromPit();
@@ -272,6 +281,14 @@ describe("test phase two", () => {
     await stakeInPit();
     await increaseTime(72);
     expect(await phaseII.getPrimarySkill(1)).to.equal(toWei("0.4"));
+    await increaseTime(23 * 24);
+    await phaseII.removeBones([1, 3, 10], [true, true, true]);
+    const [mystics, ,] = await neandersmol.getPrimarySkill(1);
+    expect(mystics).to.equal(toWei("2.7"));
+    const [, farmers] = await neandersmol.getPrimarySkill(3);
+    expect(farmers).to.equal(toWei("2.7"));
+    const [, , fighters] = await neandersmol.getPrimarySkill(10);
+    expect(fighters).to.equal(toWei("2.7"));
   });
 
   it("enter labor ground", async () => {
@@ -330,17 +347,23 @@ describe("test phase two", () => {
     ).to.be.revertedWith("NotYourToken");
     await phaseII.removeAnimalsFromLaborGround([2], [0]);
   });
-  it("claim collectables and from labor ground", async () => {
-    await phaseII.enterLaborGround([4, 2], [1, 2], [0, 1]);
-    await phaseII.bringInAnimalsToLaborGround([4, 2], [0, 2]);
+  it("bring animals and claim collectables from labor ground", async () => {
+    await phaseII.enterLaborGround(
+      [4, 2, 5, 6, 7, 8, 9],
+      [1, 2, 3, 1, 2, 3, 1],
+      [0, 1, 2, 0, 1, 2, 0]
+    );
+    await phaseII.bringInAnimalsToLaborGround(
+      [4, 2, 5, 6, 7, 8],
+      [0, 1, 2, 3, 4, 5]
+    );
     // token 4 either get 1 or 4
     // token 2 either gets 2 or 5
     await expect(phaseII.claimCollectables([4])).to.be.revertedWith(
       "CannotClaimNow"
     );
     await increaseTime(24 * 3);
-    await phaseII.claimCollectables([4]);
-    await phaseII.claimCollectables([2]);
+    await phaseII.claimCollectables([2, 4, 5, 6, 7, 8]);
   });
   it("leave labor ground", async () => {
     await phaseII.enterLaborGround([4, 2], [1, 2], [0, 1]);
@@ -416,12 +439,18 @@ describe("test phase two", () => {
     expect(e).to.equal(consumables.address);
     expect(f).to.equal(neandersmol.address);
   });
-  it("get suppliies info", async () => {
+  it("major supplies tests", async () => {
     expect(await supplies.name()).to.equal("Supplies");
     expect(await supplies.symbol()).to.equal("supplies");
-    expect(await supplies.uri(1)).to.equal("");
+    expect(await supplies.uri(1)).to.equal("1");
+    await expect(supplies.mint(owner.address, 4, 1)).to.be.revertedWith(
+      "InvalidTokenId"
+    );
+    await expect(
+      supplies.setApprovalForAll(pits.address, true)
+    ).to.be.revertedWith("NotAuthorized");
   });
-  it("get consumables info", async () => {
+  it("consumables", async () => {
     expect(await consumables.name()).to.equal("Consumables");
     expect(await consumables.symbol()).to.equal("");
     expect(await consumables.uri(1)).to.equal("");

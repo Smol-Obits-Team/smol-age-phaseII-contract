@@ -64,12 +64,14 @@ contract Phase2 {
             token.lockPeriod = uint48(lockTime);
             token.lastRewardTime = uint128(block.timestamp);
             token.ground = _ground[i];
+
             token.currentLockPeriod = pits.getTimeOut();
 
             emit EnterDevelopmentGround(
                 msg.sender,
                 tokenId,
                 lockTime,
+                block.timestamp,
                 _ground[i]
             );
             unchecked {
@@ -121,13 +123,14 @@ contract Phase2 {
 
     //@remind check this function again
     function removeBones(uint256 _tokenId, bool _all) internal {
-        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
+        Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
+        if (devGround.bonesStaked == 0) revert Lib.ZeroBalanceError();
 
         uint256 i = 1;
         uint256 amount;
         uint48 count;
         unchecked {
-            for (; i <= token.amountPosition; ++i) {
+            for (; i <= devGround.amountPosition; ++i) {
                 uint256 time = trackTime[_tokenId][i];
                 uint256 prev = trackTime[_tokenId][i + 1];
                 /**
@@ -148,7 +151,7 @@ contract Phase2 {
                  * uint prev = trackTime[_tokenId][i+1];
                  * trackTime[_tokenId][i] = prev
                  */
-                _all || token.amountPosition == 1
+                _all || devGround.amountPosition == 1
                     ? trackTime[_tokenId][i] = 0
                     : trackTime[_tokenId][i] = prev;
                 trackToken[_tokenId][time] = 0;
@@ -161,8 +164,9 @@ contract Phase2 {
         // this should be if they are removing all and it is less than 30 days
         if (_all) {
             developmentGround[_tokenId].bonesStaked = 0;
-            if (token.bonesStaked - amount != 0) {
-                if (!bones.transfer(address(1), token.bonesStaked - amount))
+
+            if (devGround.bonesStaked - amount != 0) {
+                if (!bones.transfer(address(1), devGround.bonesStaked - amount))
                     revert Lib.TransferFailed();
             } // change the address(1)
         } else {
@@ -172,7 +176,7 @@ contract Phase2 {
             if (!bones.transfer(msg.sender, amount))
                 revert Lib.TransferFailed();
 
-        emit RemoveBones(msg.sender, _tokenId, amount);
+        // emit RemoveBones(msg.sender, _tokenId, amount);
     }
 
     function developPrimarySkill(uint256 _tokenId) internal {
@@ -190,7 +194,6 @@ contract Phase2 {
     }
 
     function getPrimarySkill(uint256 _tokenId) public view returns (uint256) {
-        // make sure bones staked is more than 30% the total supply
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
 
         return
@@ -222,11 +225,11 @@ contract Phase2 {
                 ? stakeBonesInDevelopmentGround(tokenId, reward)
                 : bones.mint(msg.sender, reward);
 
-            emit ClaimDevelopmentGroundBonesReward(
-                msg.sender,
-                tokenId,
-                _stake[i]
-            );
+            // emit ClaimDevelopmentGroundBonesReward(
+            //     msg.sender,
+            //     tokenId,
+            //     _stake[i]
+            // );
             unchecked {
                 ++i;
             }
@@ -249,15 +252,16 @@ contract Phase2 {
             newAmount = _amount;
             bones.mint(address(this), newAmount);
         }
+
         updateDevelopmentGround(token, _tokenId, newAmount);
-        emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
+        // emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
     }
 
     function getDevelopmentGroundBonesReward(
         uint256 _tokenId
     ) public view returns (uint256) {
-        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        return Lib.getDevelopmentGroundBonesReward(token, pits);
+        Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
+        return Lib.getDevelopmentGroundBonesReward(devGround, pits);
     }
 
     function leaveDevelopmentGround(uint256[] calldata _tokenId) external {
@@ -291,7 +295,7 @@ contract Phase2 {
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             cave.owner = msg.sender;
             cave.stakingTime = uint96(block.timestamp);
-            emit EnterCaves(msg.sender, tokenId);
+            emit EnterCaves(msg.sender, tokenId, block.timestamp);
             unchecked {
                 ++i;
             }
@@ -336,7 +340,9 @@ contract Phase2 {
     }
 
     function getCavesReward(uint256 _tokenId) public view returns (uint256) {
-        return (timeLeftToLeaveCaveInDays(_tokenId) * 10 * TO_WEI);
+        Lib.Caves memory cave = caves[_tokenId];
+        if (cave.stakingTime == 0) return 0;
+        return ((block.timestamp - cave.stakingTime) / 1 days) * 10 * TO_WEI;
     }
 
     function enterLaborGround(
@@ -364,7 +370,7 @@ contract Phase2 {
             labor.supplyId = uint32(supplyId);
             labor.job = _job[i];
 
-            // emit EnterLaborGround(msg.sender, tokenId, supplyId, _job[i]);
+            emit EnterLaborGround(msg.sender, tokenId, supplyId, _job[i]);
 
             unchecked {
                 ++i;
@@ -444,6 +450,7 @@ contract Phase2 {
             consumables.mint(msg.sender, consumablesTokenId, 1);
 
         laborGround[_tokenId].supplyId = 0;
+        laborGround[_tokenId].lockTime = 0;
         // set time to zero here
         emit ClaimCollectable(msg.sender, _tokenId);
     }
@@ -530,10 +537,12 @@ contract Phase2 {
         uint256 _tokenId,
         uint256 _amount
     ) internal {
-        _devGround.bonesStaked += _amount;
-        ++_devGround.amountPosition;
-        trackToken[_tokenId][block.timestamp] = _amount;
-        trackTime[_tokenId][_devGround.amountPosition] = block.timestamp;
+        unchecked {
+            _devGround.bonesStaked += _amount;
+            ++_devGround.amountPosition;
+            trackToken[_tokenId][block.timestamp] = _amount;
+            trackTime[_tokenId][_devGround.amountPosition] = block.timestamp;
+        }
     }
 
     function checkPossibleClaims(
@@ -608,13 +617,6 @@ contract Phase2 {
         return consumablesTokenId;
     }
 
-    function timeLeftToLeaveCaveInDays(
-        uint256 _tokenId
-    ) internal view returns (uint256) {
-        Lib.Caves memory cave = caves[_tokenId];
-        return Lib.timeLeftToLeaveCaveInDays(cave);
-    }
-
     function getConsumablesTokenId(
         Lib.Jobs _job
     ) internal pure returns (uint256 tokenIdOne, uint256 tokenIdTwo) {
@@ -674,7 +676,11 @@ contract Phase2 {
         );
     }
 
-    event EnterCaves(address indexed owner, uint256 indexed tokenId);
+    event EnterCaves(
+        address indexed owner,
+        uint256 indexed tokenId,
+        uint256 indexed stakeTime
+    );
 
     event ClaimDevelopmentGroundBonesReward(
         address indexed owner,
@@ -713,6 +719,7 @@ contract Phase2 {
         address indexed owner,
         uint256 indexed tokenId,
         uint256 indexed lockTime,
+        uint256 entryTime,
         Lib.Grounds ground
     );
 

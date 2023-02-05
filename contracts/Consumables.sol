@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
+import {Lib} from "./library/Lib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
@@ -16,12 +17,19 @@ contract Consumables is ERC1155 {
 
     string private baseUri;
 
+    mapping(address => bool) private allowedTo;
+
     constructor() ERC1155("") {
         baseUri = "";
     }
 
+    function setAllowedAddress(address _addr, bool _state) external {
+        allowedTo[_addr] = _state;
+    }
+
     function mint(address _to, uint256 _tokenId, uint256 _amount) external {
-        require(_tokenId < 7);
+        if (!allowedTo[msg.sender]) revert Lib.NotAuthorized();
+        if (_tokenId > 6) revert Lib.InvalidTokenId();
         _mint(_to, _tokenId, _amount, "");
     }
 
