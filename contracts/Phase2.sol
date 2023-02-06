@@ -161,22 +161,17 @@ contract Phase2 {
 
             developmentGround[_tokenId].amountPosition -= count;
         }
-        // this should be if they are removing all and it is less than 30 days
-        if (_all) {
-            developmentGround[_tokenId].bonesStaked = 0;
+        developmentGround[_tokenId].bonesStaked -= amount;
 
-            if (devGround.bonesStaked - amount != 0) {
-                if (!bones.transfer(address(1), devGround.bonesStaked - amount))
-                    revert Lib.TransferFailed();
-            } // change the address(1)
-        } else {
-            developmentGround[_tokenId].bonesStaked -= amount;
-        }
+        uint256 bal = devGround.bonesStaked - amount;
+        if (bal != 0 && _all)
+            if (!bones.transfer(address(1), bal)) revert Lib.TransferFailed();
+
         if (amount != 0)
             if (!bones.transfer(msg.sender, amount))
                 revert Lib.TransferFailed();
 
-        // emit RemoveBones(msg.sender, _tokenId, amount);
+        emit RemoveBones(msg.sender, _tokenId, amount);
     }
 
     function developPrimarySkill(uint256 _tokenId) internal {
@@ -225,11 +220,11 @@ contract Phase2 {
                 ? stakeBonesInDevelopmentGround(tokenId, reward)
                 : bones.mint(msg.sender, reward);
 
-            // emit ClaimDevelopmentGroundBonesReward(
-            //     msg.sender,
-            //     tokenId,
-            //     _stake[i]
-            // );
+            emit ClaimDevelopmentGroundBonesReward(
+                msg.sender,
+                tokenId,
+                _stake[i]
+            );
             unchecked {
                 ++i;
             }
@@ -241,20 +236,14 @@ contract Phase2 {
         uint256 _amount
     ) internal {
         Lib.DevelopmentGround storage token = developmentGround[_tokenId];
-        uint256 newAmount;
         uint256 remainder = _amount % MINIMUM_BONE_STAKE;
-        if (remainder == _amount) revert Lib.WrongMultiple();
-        if (remainder != 0) {
-            newAmount = _amount - remainder;
-            bones.mint(msg.sender, remainder);
-            bones.mint(address(this), newAmount);
-        } else {
-            newAmount = _amount;
-            bones.mint(address(this), newAmount);
-        }
+        if (remainder == _amount) revert Lib.WrongMultiple(); // if the amount is less than Minimum
+        if (remainder != 0) bones.mint(msg.sender, remainder); // if the amount is greater than minimum but wrong multiple
+        uint256 newAmount = _amount - remainder;
+        bones.mint(address(this), newAmount);
 
         updateDevelopmentGround(token, _tokenId, newAmount);
-        // emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
+        emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
     }
 
     function getDevelopmentGroundBonesReward(
