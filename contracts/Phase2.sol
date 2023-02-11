@@ -183,10 +183,10 @@ contract Phase2 is Initializable {
     // check this with gas
     function developPrimarySkill(uint256 _tokenId) internal {
         // make sure bones staked is more than 30% the total supply
-        // Lib.DevelopmentGround memory token = developmentGround[_tokenId];
+        Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
         (uint256 amount, Lib.Grounds ground) = (
             getPrimarySkill(_tokenId),
-            developmentGround[_tokenId].ground
+            devGround.ground
         );
         if (ground == Lib.Grounds.Chambers) {
             neandersmol.developMystics(_tokenId, amount);
@@ -217,7 +217,7 @@ contract Phase2 is Initializable {
         bool[] calldata _stake
     ) external {
         if (_tokenId.length != _stake.length) revert Lib.LengthsNotEqual();
-        uint256 i;  
+        uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
             Lib.DevelopmentGround memory token = developmentGround[tokenId];
@@ -631,7 +631,7 @@ contract Phase2 is Initializable {
         address,
         uint256,
         uint256,
-        bytes memory
+        bytes calldata
     ) external pure returns (bytes4) {
         return this.onERC1155Received.selector;
     }
