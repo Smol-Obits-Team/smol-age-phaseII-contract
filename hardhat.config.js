@@ -16,6 +16,7 @@ const REPORT_GAS = process.env.REPORT_GAS || true;
 
 module.exports = {
   defaultNetwork: "hardhat",
+
   networks: {
     hardhat: {
       chainId: 31337,
@@ -63,9 +64,16 @@ module.exports = {
         version: "0.8.17",
       },
     ],
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
   },
+
   etherscan: {
-    apiKey: { mumbai: ARBISCAN_API_KEY },
+    apiKey: { arbiscan: ARBISCAN_API_KEY },
   },
   mocha: {
     timeout: 200000, // 200 seconds max for running tests
