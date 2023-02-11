@@ -140,7 +140,7 @@ describe("test phase two", () => {
     const info = await phaseII.getDevelopmentGroundInfo(1);
     expect(info.bonesStaked).to.equal(toWei("3000"));
   });
-  it("claim bones development ground", async () => {
+  it("claim bones in development ground", async () => {
     await expect(
       phaseII.claimDevelopmentGroundBonesReward([1], [true, false])
     ).to.be.revertedWith("LengthsNotEqual");

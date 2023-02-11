@@ -3,10 +3,12 @@ pragma solidity 0.8.17;
 
 import "hardhat/console.sol";
 import {Lib} from "./library/Lib.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract Pits {
-    IERC20 public bones;
+contract Pits is Initializable {
+    IERC20 private bones;
     uint256 private bonesStaked;
 
     uint256 private timeOut;
@@ -16,7 +18,7 @@ contract Pits {
     mapping(address => uint256) private balance;
     mapping(uint256 => uint256) private trackDaysOff;
 
-    constructor(address _bones) {
+    function initialize(address _bones) external initializer {
         bones = IERC20(_bones);
     }
 
@@ -24,7 +26,12 @@ contract Pits {
         if (bones.balanceOf(msg.sender) < _amount)
             revert Lib.BalanceIsInsufficient();
         uint256 bonesBalance = bonesStaked;
-        bones.transferFrom(msg.sender, address(this), _amount);
+        SafeTransferLib.safeTransferFrom(
+            address(bones),
+            msg.sender,
+            address(this),
+            _amount
+        );
         balance[msg.sender] += _amount;
         bonesStaked += _amount;
         if (bonesBalance < minimumBonesRequired() && validation()) {
@@ -45,30 +52,6 @@ contract Pits {
         return trackDaysOff[_timestamp];
     }
 
-    /**
-     * timestamp = dayOff[timestamp]✅ + unknowdays +currDaysOff✅
-     * unknowdays = totalDaysOff - (currTimestamp - timestamp) -(timestamp - initialTime)
-     * note some of the 👆 are needed in days
-     * start----stop----start----stop----start----stop----start----stop
-     * 0---------3-------5---
-     */
-    /**
-     * (str - stp) + (str - stp) + (str - stp) => convert str - stp to 1/any amount days
-     * after check str = block.timestamp
-     * after check stp = block.timestamp
-     *
-     * diff = ? days
-     * mapping(str => days?)  => when they enter we mark their str time yeah
-     * note for the str below is for the neandersmols struct
-     * if timeBelowMinimum is str we see a reward variable that is set to the
-     * reward gotten when stake is below 30% and we return that
-     * Another one is if timeBelowMinimum is str we just sub those days from the reward
-     * else if timeBelowMinimum is not str i.e now greater, we add the time of the initial
-     * str of the token and calculate that of the current with time off
-     * or after the end of a certain cycle you add the days off and use calculation
-     * to check the period off
-     */
-
     function removeBonesFromYard(uint256 _amount) external {
         if (_amount > balance[msg.sender]) revert();
         uint256 bonesBalance = bonesStaked;
@@ -82,8 +65,7 @@ contract Pits {
             bonesBalance >= minimumBonesRequired() &&
             bonesStaked < (bones.totalSupply() * 3) / 10
         ) timeOut = block.timestamp;
-
-        if (!bones.transfer(msg.sender, _amount)) revert Lib.TransferFailed();
+        SafeTransferLib.safeTransfer(address(bones), msg.sender, _amount);
     }
 
     function minimumBonesRequired() internal view returns (uint256) {

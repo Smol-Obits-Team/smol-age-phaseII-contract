@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
-contract mERC721 is ERC721 {
+contract mERC721 is ERC721Upgradeable {
     uint256 tokenId;
 
-    constructor() ERC721("", "") {
+    function initialize() external initializer {
         mint(15);
         commonSense[1] = 101;
         commonSense[2] = 98;

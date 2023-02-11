@@ -1,24 +1,27 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "hardhat/console.sol";
 import {Lib} from "./library/Lib.sol";
 import {IPits} from "./interfaces/IPits.sol";
-import {IToken} from "./interfaces/IToken.sol";
+import {IBones} from "./interfaces/IBones.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
+import {IRandomizer} from "./interfaces/IRandomizer.sol";
 import {INeandersmol} from "./interfaces/INeandersmol.sol";
 import {IConsumables, IERC1155} from "./interfaces/IConsumables.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract Phase2 {
+contract Phase2 is Initializable {
     IPits private pits;
-    IToken private bones;
+    IBones private bones;
     IERC1155 private animals;
     IERC1155 private supplies;
+    IRandomizer private randomizer;
     IConsumables private consumables;
     INeandersmol private neandersmol;
 
     uint256 private constant TO_WEI = 10 ** 18;
 
-    uint256 private constant MINIMUM_BONE_STAKE = 1000 * 10 ** 18;
+    uint256 private constant MINIMUM_BONE_STAKE = 1000 * TO_WEI;
 
     mapping(uint256 => Lib.Caves) private caves;
     mapping(uint256 => Lib.LaborGround) private laborGround;
@@ -28,23 +31,24 @@ contract Phase2 {
     // tokenId -> time -> amount
     mapping(uint256 => mapping(uint256 => uint256)) private trackToken;
 
-    constructor(
+    function initialize(
         address _pits,
         address _bones,
         address _animals,
         address _supplies,
         address _consumables,
-        address _neandersmol
-    ) {
-        bones = IToken(_bones);
+        address _neandersmol,
+        address _randomizer
+    ) external initializer {
+        bones = IBones(_bones);
         animals = IERC1155(_animals);
         pits = IPits(_pits);
         supplies = IERC1155(_supplies);
+        randomizer = IRandomizer(_randomizer);
         consumables = IConsumables(_consumables);
         neandersmol = INeandersmol(_neandersmol);
     }
 
-    /// @notice this function only works for skilled Neandersmols
     function enterDevelopmentGround(
         uint256[] calldata _tokenId,
         uint256[] calldata _lockTime,
@@ -64,7 +68,6 @@ contract Phase2 {
             token.lockPeriod = uint48(lockTime);
             token.lastRewardTime = uint128(block.timestamp);
             token.ground = _ground[i];
-
             token.currentLockPeriod = pits.getTimeOut();
 
             emit EnterDevelopmentGround(
@@ -92,12 +95,13 @@ contract Phase2 {
             Lib.DevelopmentGround storage devGround = developmentGround[
                 tokenId
             ];
-            if (bones.balanceOf(msg.sender) < amount)
-                revert Lib.BalanceIsInsufficient();
-            if (devGround.owner != msg.sender)
-                revert Lib.TokenNotInDevelopmentGround();
-            if (amount % MINIMUM_BONE_STAKE != 0) revert Lib.WrongMultiple();
-            bones.transferFrom(msg.sender, address(this), amount);
+            Lib.stakeBonesInDevelopmentGround(devGround, bones, amount);
+            SafeTransferLib.safeTransferFrom(
+                address(bones),
+                msg.sender,
+                address(this),
+                amount
+            );
             updateDevelopmentGround(devGround, tokenId, amount);
             emit StakeBonesInDevelopmentGround(msg.sender, amount, tokenId);
             unchecked {
@@ -125,19 +129,22 @@ contract Phase2 {
     function removeBones(uint256 _tokenId, bool _all) internal {
         Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
         if (devGround.bonesStaked == 0) revert Lib.ZeroBalanceError();
-
+        uint256 bal;
         uint256 i = 1;
         uint256 amount;
         uint48 count;
         unchecked {
             for (; i <= devGround.amountPosition; ++i) {
-                uint256 time = trackTime[_tokenId][i];
-                uint256 prev = trackTime[_tokenId][i + 1];
-                /**
+                (uint256 time, uint256 prev) = (
+                    trackTime[_tokenId][i],
+                    trackTime[_tokenId][i + 1]
+                );
+                /*
                  * init----------------unlock-----------current time
                  * currenttime > init + unlock✅
                  */
                 if (block.timestamp < time + 30 days && !_all) continue;
+
                 block.timestamp < time + 30 days && _all
                     ? amount += trackToken[_tokenId][time] / 2
                     : amount += trackToken[_tokenId][time];
@@ -160,25 +167,27 @@ contract Phase2 {
             }
 
             developmentGround[_tokenId].amountPosition -= count;
-        }
-        developmentGround[_tokenId].bonesStaked -= amount;
+            developmentGround[_tokenId].bonesStaked -= amount;
 
-        uint256 bal = devGround.bonesStaked - amount;
+            bal = devGround.bonesStaked - amount;
+        }
         if (bal != 0 && _all)
-            if (!bones.transfer(address(1), bal)) revert Lib.TransferFailed();
+            SafeTransferLib.safeTransfer(address(bones), address(1), bal);
 
         if (amount != 0)
-            if (!bones.transfer(msg.sender, amount))
-                revert Lib.TransferFailed();
+            SafeTransferLib.safeTransfer(address(bones), msg.sender, bal);
 
         emit RemoveBones(msg.sender, _tokenId, amount);
     }
 
+    // check this with gas
     function developPrimarySkill(uint256 _tokenId) internal {
-        // make sure bones staked is more than 50% the total supply
-        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        uint256 amount = getPrimarySkill(_tokenId);
-        Lib.Grounds ground = token.ground;
+        // make sure bones staked is more than 30% the total supply
+        // Lib.DevelopmentGround memory token = developmentGround[_tokenId];
+        (uint256 amount, Lib.Grounds ground) = (
+            getPrimarySkill(_tokenId),
+            developmentGround[_tokenId].ground
+        );
         if (ground == Lib.Grounds.Chambers) {
             neandersmol.developMystics(_tokenId, amount);
         } else if (ground == Lib.Grounds.Garden) {
@@ -193,7 +202,9 @@ contract Phase2 {
 
         return
             Lib.calculatePrimarySkill(
-                token,
+                token.bonesStaked,
+                token.amountPosition,
+                token.currentLockPeriod,
                 _tokenId,
                 pits,
                 trackTime,
@@ -206,7 +217,7 @@ contract Phase2 {
         bool[] calldata _stake
     ) external {
         if (_tokenId.length != _stake.length) revert Lib.LengthsNotEqual();
-        uint256 i;
+        uint256 i;  
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
             Lib.DevelopmentGround memory token = developmentGround[tokenId];
@@ -235,22 +246,31 @@ contract Phase2 {
         uint256 _tokenId,
         uint256 _amount
     ) internal {
-        Lib.DevelopmentGround storage token = developmentGround[_tokenId];
         uint256 remainder = _amount % MINIMUM_BONE_STAKE;
         if (remainder == _amount) revert Lib.WrongMultiple(); // if the amount is less than Minimum
         if (remainder != 0) bones.mint(msg.sender, remainder); // if the amount is greater than minimum but wrong multiple
         uint256 newAmount = _amount - remainder;
         bones.mint(address(this), newAmount);
 
-        updateDevelopmentGround(token, _tokenId, newAmount);
-        emit StakeBonesInDevelopmentGround(msg.sender, _amount, _tokenId);
+        updateDevelopmentGround(
+            developmentGround[_tokenId],
+            _tokenId,
+            newAmount
+        );
+        emit StakeBonesInDevelopmentGround(msg.sender, newAmount, _tokenId);
     }
 
     function getDevelopmentGroundBonesReward(
         uint256 _tokenId
     ) public view returns (uint256) {
         Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
-        return Lib.getDevelopmentGroundBonesReward(devGround, pits);
+        return
+            Lib.getDevelopmentGroundBonesReward(
+                devGround.currentLockPeriod,
+                devGround.lockPeriod,
+                devGround.lastRewardTime,
+                pits
+            );
     }
 
     function leaveDevelopmentGround(uint256[] calldata _tokenId) external {
@@ -264,10 +284,8 @@ contract Phase2 {
     }
 
     function leaveDevelopmentGround(uint256 _tokenId) internal {
-        Lib.DevelopmentGround memory token = developmentGround[_tokenId];
-        if (token.owner != msg.sender) revert Lib.NotYourToken();
-        if (block.timestamp < token.lockTime + token.lockPeriod)
-            revert Lib.NeandersmolsIsLocked();
+        Lib.DevelopmentGround storage devGround = developmentGround[_tokenId];
+        Lib.leaveDevelopmentGround(devGround);
         removeBones(_tokenId, true);
         delete developmentGround[_tokenId];
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
@@ -377,8 +395,8 @@ contract Phase2 {
         for (; i < _tokenId.length; ) {
             uint256 animalsId = _animalsId[i];
             Lib.LaborGround storage labor = laborGround[_tokenId[i]];
-            if (labor.owner != msg.sender) revert Lib.NotYourToken();
-            if (labor.animalId != animalsId + 1) revert Lib.NotYourToken();
+            Lib.removeAnimalsFromLaborGround(labor, animalsId);
+
             animals.safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -408,8 +426,7 @@ contract Phase2 {
         for (; i < _tokenId.length; ) {
             uint256 animalsId = _animalsId[i];
             Lib.LaborGround storage labor = laborGround[_tokenId[i]];
-            if (labor.owner != msg.sender) revert Lib.NotYourToken();
-
+            Lib.bringInAnimalsToLaborGround(labor);
             animals.safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -417,7 +434,10 @@ contract Phase2 {
                 1,
                 ""
             );
-            labor.animalId = uint32(animalsId) + 1; // added one since animals token id starts from 0
+            unchecked {
+                labor.animalId = uint32(animalsId) + 1; // added one since animals token id starts from 0
+            }
+
             emit BringInAnimalsToLaborGround(
                 msg.sender,
                 _tokenId[i],
@@ -430,7 +450,7 @@ contract Phase2 {
     }
 
     function claimCollectable(uint256 _tokenId) internal {
-        Lib.LaborGround memory labor = laborGround[_tokenId];
+        Lib.LaborGround storage labor = laborGround[_tokenId];
         if (msg.sender != labor.owner) revert Lib.NotYourToken();
         if (block.timestamp < labor.lockTime + 3 days)
             revert Lib.CannotClaimNow();
@@ -438,9 +458,8 @@ contract Phase2 {
         if (consumablesTokenId != 0)
             consumables.mint(msg.sender, consumablesTokenId, 1);
 
-        laborGround[_tokenId].supplyId = 0;
-        laborGround[_tokenId].lockTime = 0;
-        // set time to zero here
+        labor.supplyId = 0;
+        labor.lockTime = uint32(block.timestamp);
         emit ClaimCollectable(msg.sender, _tokenId);
     }
 
@@ -460,7 +479,7 @@ contract Phase2 {
         uint256 _amount,
         uint256 _min
     ) internal {
-        uint256 random = getRandom(_amount);
+        uint256 random = randomizer.getRandom(_amount);
         if (random < _min) {
             supplies.safeTransferFrom(
                 address(this),
@@ -506,20 +525,6 @@ contract Phase2 {
         }
     }
 
-    function getRandom(uint256 _num) internal view returns (uint256) {
-        return
-            uint256(
-                keccak256(
-                    abi.encode(
-                        msg.sender,
-                        block.number,
-                        block.timestamp,
-                        block.coinbase
-                    )
-                )
-            ) % _num;
-    }
-
     // still check this
     function updateDevelopmentGround(
         Lib.DevelopmentGround storage _devGround,
@@ -538,7 +543,7 @@ contract Phase2 {
         uint256 _tokenId,
         Lib.LaborGround memory labor
     ) internal returns (uint256) {
-        uint256 rnd = getRandom(101);
+        uint256 rnd = randomizer.getRandom(101);
         uint animalId = labor.animalId;
         uint256 consumablesTokenId;
         (uint256 tokenOne, uint256 tokenTwo) = getConsumablesTokenId(labor.job);
@@ -653,13 +658,14 @@ contract Phase2 {
     function getAddress()
         external
         view
-        returns (address, address, address, address, address, address)
+        returns (address, address, address, address, address, address, address)
     {
         return (
             address(pits),
             address(bones),
             address(animals),
             address(supplies),
+            address(randomizer),
             address(consumables),
             address(neandersmol)
         );

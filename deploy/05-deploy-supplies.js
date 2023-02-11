@@ -4,11 +4,19 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
   const supplies = await deploy("Supplies", {
     from: deployer,
-    args: [],
     log: true,
+    proxy: {
+      owner: deployer,
+      proxyContract: "OpenZeppelinTransparentProxy",
+      execute: {
+        init: {
+          methodName: "initialize",
+          args: [""],
+        },
+      },
+    },
   });
 
-  log(`Supplies contract successfully deployed to ${supplies.address}`);
 };
 
 module.exports.tags = ["all", "supplies"];

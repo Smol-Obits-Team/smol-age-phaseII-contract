@@ -6,11 +6,17 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   if (chainId === 31337) {
     const animals = await deploy("SmolAgeAnimals", {
       from: deployer,
-      args: [],
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          methodName: "initialize",
+          args: [],
+        },
+      },
       log: true,
     });
 
-    log(`SmolAgeAnimals contract successfully deployed to ${animals.address}`);
   }
 };
 

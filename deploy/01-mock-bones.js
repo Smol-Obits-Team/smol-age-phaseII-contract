@@ -6,11 +6,19 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   if (chainId === 31337) {
     const bones = await deploy("Token", {
       from: deployer,
-      args: [],
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [],
+          },
+        },
+      },
       log: true,
     });
 
-    log(`Mock Bones contract successfully deployed to ${bones.address}`);
   }
 };
 

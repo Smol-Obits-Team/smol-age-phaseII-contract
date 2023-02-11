@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
-import "hardhat/console.sol";
+
 import {IPits} from "../interfaces/IPits.sol";
 import {INeandersmol} from "../interfaces/INeandersmol.sol";
+import {IBones} from "../interfaces/IBones.sol";
 
 library Lib {
     error CsToHigh();
@@ -13,6 +14,7 @@ library Lib {
     error TransferFailed();
     error InvalidTokenId();
     error InvalidLockTime();
+    error NoMoreAnimalsAllowed();
     error LengthsNotEqual();
     error ZeroBalanceError();
     error CsIsBellowHundred();
@@ -21,8 +23,6 @@ library Lib {
     error InvalidTokenForThisJob();
     error DevelopmentGroundIsLocked();
     error TokenNotInDevelopmentGround();
-
-    uint256 private constant INCREASE_RATE = 1;
 
     struct DevelopmentGround {
         address owner;
@@ -60,55 +60,66 @@ library Lib {
         Battlefield
     }
 
+    uint256 private constant MINIMUM_BONE_STAKE = 1000 * 10 ** 18;
+
     function getDevelopmentGroundBonesReward(
-        DevelopmentGround memory _token,
+        uint256 _currentLockPeriod,
+        uint256 _lockPeriod,
+        uint256 _lastRewardTime,
         IPits _pits
     ) external view returns (uint256) {
-        if (_token.lockPeriod == 0) return 0;
-        uint256 rewardRate = getRewardRate(_token.lockPeriod);
+        if (_lockPeriod == 0) return 0;
+        uint256 rewardRate = getRewardRate(_lockPeriod);
 
-        uint256 time = (block.timestamp - _token.lastRewardTime) / 1 days;
+        uint256 time = (block.timestamp - _lastRewardTime) / 1 days;
         return
-            (rewardRate * time - calculateFinalReward(_token, _pits)) *
-            10 ** 18;
+            (rewardRate *
+                time -
+                calculateFinalReward(_currentLockPeriod, _pits)) * 10 ** 18;
     }
 
     // check if this can be fixed to reduce gas cost
     function calculatePrimarySkill(
-        DevelopmentGround memory token,
+        uint256 _bonesStaked,
+        uint256 _amountPosition,
+        uint256 _currentLockPeriod,
         uint256 _tokenId,
         IPits _pits,
         mapping(uint256 => mapping(uint256 => uint256)) storage trackTime,
         mapping(uint256 => mapping(uint256 => uint256)) storage trackToken
     ) external view returns (uint256) {
         // make sure bones staked is more than 30% the total supply
-        if (token.bonesStaked == 0) return 0;
+        if (_bonesStaked == 0) return 0;
         uint256 amount;
-        for (uint256 i = 1; i <= token.amountPosition; ) {
+        for (uint256 i = 1; i <= _amountPosition; ) {
             uint256 time = (block.timestamp - trackTime[_tokenId][i]) / 1 days;
             uint256 stakedAmount = trackToken[_tokenId][trackTime[_tokenId][i]];
-            amount += (INCREASE_RATE * time * stakedAmount);
+            amount += (time * stakedAmount);
 
             unchecked {
                 ++i;
             }
         }
-        return amount / 10 ** 4 - calculateFinalReward(token, _pits) * 10 ** 16;
+
+        return
+            (amount -
+                calculateFinalReward(_currentLockPeriod, _pits) *
+                10 ** 20) / 10 ** 4;
     }
 
     function calculateFinalReward(
-        DevelopmentGround memory token,
+        uint256 _currentLockPeriod,
         IPits _pits
     ) internal view returns (uint256) {
         uint256 amount;
 
-        if (token.currentLockPeriod != _pits.getTimeOut()) {
+        if (_currentLockPeriod != _pits.getTimeOut()) {
             uint256 howLong = (block.timestamp - _pits.getTimeOut()) / 1 days;
             amount = (_pits.getTotalDaysOff() -
-                _pits.getDaysOff(token.currentLockPeriod) +
+                _pits.getDaysOff(_currentLockPeriod) +
                 howLong);
         }
-        if (token.currentLockPeriod == 0) {
+        if (_currentLockPeriod == 0) {
             uint256 off;
             _pits.getTimeOut() != 0
                 ? off = (block.timestamp - _pits.getTimeOut()) / 1 days
@@ -134,7 +145,6 @@ library Lib {
         uint256 _lockTime
     ) external view {
         if (!_pits.validation()) revert DevelopmentGroundIsLocked();
-
         if (_neandersmol.getCommonSense(_tokenId) < 100)
             revert CsIsBellowHundred();
         if (_neandersmol.ownerOf(_tokenId) != msg.sender) revert NotYourToken();
@@ -166,5 +176,41 @@ library Lib {
         if (_job == Jobs.Digging) return _tokenId == 1;
         if (_job == Jobs.Foraging) return _tokenId == 2;
         if (_job == Jobs.Mining) return _tokenId == 3;
+    }
+
+    function leaveDevelopmentGround(
+        DevelopmentGround storage _devGround
+    ) external view {
+        DevelopmentGround memory devGround = _devGround;
+        if (devGround.owner != msg.sender) revert NotYourToken();
+        if (block.timestamp < devGround.lockTime + devGround.lockPeriod)
+            revert NeandersmolsIsLocked();
+    }
+
+    function stakeBonesInDevelopmentGround(
+        DevelopmentGround storage _devGround,
+        IBones _bones,
+        uint256 _amount
+    ) external view {
+        if (_bones.balanceOf(msg.sender) < _amount)
+            revert BalanceIsInsufficient();
+        if (_devGround.owner != msg.sender)
+            revert TokenNotInDevelopmentGround();
+        if (_amount % MINIMUM_BONE_STAKE != 0) revert WrongMultiple();
+    }
+
+    function bringInAnimalsToLaborGround(
+        LaborGround storage _labor
+    ) external view {
+        if (_labor.owner != msg.sender) revert NotYourToken();
+        if (_labor.animalId != 0) revert NoMoreAnimalsAllowed();
+    }
+
+    function removeAnimalsFromLaborGround(
+        LaborGround storage _labor,
+        uint256 _animalsId
+    ) external view {
+        if (_labor.owner != msg.sender && _labor.animalId != _animalsId + 1)
+            revert Lib.NotYourToken();
     }
 }

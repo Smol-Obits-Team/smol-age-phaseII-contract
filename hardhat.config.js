@@ -64,7 +64,14 @@ module.exports = {
         version: "0.8.17",
       },
     ],
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
   },
+
   etherscan: {
     apiKey: { arbiscan: ARBISCAN_API_KEY },
   },
