@@ -460,7 +460,7 @@ describe("test phase two", () => {
   it("major supplies tests", async () => {
     expect(await supplies.name()).to.equal("Supplies");
     expect(await supplies.symbol()).to.equal("supplies");
-    expect(await supplies.uri(1)).to.equal("1");
+    expect(await supplies.uri(1)).to.equal("ipfs://QmZyUXadJvNRWq99nKbtxL66ZmP2Z8faWDTdFsGYyJnS84/1");
     await expect(supplies.mint([1], [3], [])).to.be.revertedWith(
       "LengthsNotEqual"
     );
@@ -477,7 +477,7 @@ describe("test phase two", () => {
   it("consumables", async () => {
     expect(await consumables.name()).to.equal("Consumables");
     expect(await consumables.symbol()).to.equal("consumables");
-    expect(await consumables.uri(1)).to.equal("1");
+    expect(await consumables.uri(1)).to.equal("ipfs://QmZyUXadJvNRWq99nKbtxL66ZmP2Z8faWDTdFsGYyJnS84/1");
     await expect( consumables.mint(owner.address, 1, 1)).to.be.revertedWith(
       "NotAuthorized"
     );
