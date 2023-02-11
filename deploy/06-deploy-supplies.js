@@ -1,32 +1,27 @@
-const { ethers, network } = require("hardhat");
-
 module.exports = async ({ getNamedAccounts, deployments }) => {
-  const { deploy, log } = deployments;
+  const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
-  const chainId = network.config.chainId;
 
   const bones = await ethers.getContract("Token");
-  let addr;
+  const treasure = await ethers.getContract("mERC1155");
+  const magic = await ethers.getContract("mERC20");
 
-  if (chainId != 42161) addr = bones.address;
-  else addr = "0x74912f00bda1c2030cf33e7194803259426e64a4";
+  const args = [bones.address, magic.address, treasure.address, ""];
 
-  const pits = await deploy("Pits", {
+  await deploy("Supplies", {
     from: deployer,
+    log: true,
     proxy: {
       owner: deployer,
       proxyContract: "OpenZeppelinTransparentProxy",
       execute: {
         init: {
           methodName: "initialize",
-          args: [addr],
+          args,
         },
       },
     },
-
-    log: true,
   });
-
 };
 
-module.exports.tags = ["all", "pits"];
+module.exports.tags = ["all", "supplies"];

@@ -4,7 +4,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const chainId = network.config.chainId;
 
   if (chainId === 31337) {
-    const animals = await deploy("SmolAgeAnimals", {
+    await deploy("SmolAgeAnimals", {
       from: deployer,
       proxy: {
         owner: deployer,
@@ -16,7 +16,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       },
       log: true,
     });
-
   }
 };
 

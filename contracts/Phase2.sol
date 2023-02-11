@@ -213,29 +213,29 @@ contract Phase2 is Initializable {
     }
 
     function claimDevelopmentGroundBonesReward(
+        uint256 _tokenId,
+        bool _stake
+    ) internal {
+        Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
+        if (devGround.owner != msg.sender) revert Lib.NotYourToken();
+        uint256 reward = getDevelopmentGroundBonesReward(_tokenId);
+        if (reward == 0) revert Lib.ZeroBalanceError();
+        developmentGround[_tokenId].lastRewardTime = uint128(block.timestamp);
+        _stake
+            ? stakeBonesInDevelopmentGround(_tokenId, reward)
+            : bones.mint(msg.sender, reward);
+
+        emit ClaimDevelopmentGroundBonesReward(msg.sender, _tokenId, _stake);
+    }
+
+    function claimDevelopmentGroundBonesReward(
         uint256[] calldata _tokenId,
         bool[] calldata _stake
     ) external {
         if (_tokenId.length != _stake.length) revert Lib.LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ) {
-            uint256 tokenId = _tokenId[i];
-            Lib.DevelopmentGround memory token = developmentGround[tokenId];
-            if (token.owner != msg.sender) revert Lib.NotYourToken();
-            uint256 reward = getDevelopmentGroundBonesReward(tokenId);
-            if (reward == 0) revert Lib.ZeroBalanceError();
-            developmentGround[tokenId].lastRewardTime = uint128(
-                block.timestamp
-            );
-            _stake[i]
-                ? stakeBonesInDevelopmentGround(tokenId, reward)
-                : bones.mint(msg.sender, reward);
-
-            emit ClaimDevelopmentGroundBonesReward(
-                msg.sender,
-                tokenId,
-                _stake[i]
-            );
+            claimDevelopmentGroundBonesReward(_tokenId[i], _stake[i]);
             unchecked {
                 ++i;
             }
@@ -286,7 +286,9 @@ contract Phase2 is Initializable {
     function leaveDevelopmentGround(uint256 _tokenId) internal {
         Lib.DevelopmentGround storage devGround = developmentGround[_tokenId];
         Lib.leaveDevelopmentGround(devGround);
-        removeBones(_tokenId, true);
+        if (devGround.bonesStaked > 0) removeBones(_tokenId, true);
+        if (getDevelopmentGroundBonesReward(_tokenId) > 0)
+            claimDevelopmentGroundBonesReward(_tokenId, false);
         delete developmentGround[_tokenId];
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
         emit LeaveDevelopmentGround(msg.sender, _tokenId);

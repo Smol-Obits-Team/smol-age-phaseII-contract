@@ -2,10 +2,11 @@
 pragma solidity 0.8.17;
 
 import {Lib} from "./library/Lib.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
 import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 
-contract Consumables is ERC1155Upgradeable {
+contract Consumables is ERC1155Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
 
     uint256 constant DIRT = 1;
@@ -20,16 +21,16 @@ contract Consumables is ERC1155Upgradeable {
     mapping(address => bool) allowedTo;
 
     function initialize(string memory _baseUri) external initializer {
+        _initializeOwner(msg.sender);
         baseUri = _baseUri;
     }
 
-    function setAllowedAddress(address _addr, bool _state) external {
+    function setAllowedAddress(address _addr, bool _state) external onlyOwner {
         allowedTo[_addr] = _state;
     }
 
     function mint(address _to, uint256 _tokenId, uint256 _amount) external {
         if (!allowedTo[msg.sender]) revert Lib.NotAuthorized();
-        if (_tokenId > 6) revert Lib.InvalidTokenId();
         _mint(_to, _tokenId, _amount, "");
     }
 
@@ -38,7 +39,7 @@ contract Consumables is ERC1155Upgradeable {
     }
 
     function symbol() external pure returns (string memory) {
-        return "";
+        return "consumables";
     }
 
     function uri(

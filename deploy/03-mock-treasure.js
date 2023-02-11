@@ -1,8 +1,8 @@
 module.exports = async ({ getNamedAccounts, deployments }) => {
-  const { deploy, log } = deployments;
+  const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const supplies = await deploy("Supplies", {
+  await deploy("mERC1155", {
     from: deployer,
     log: true,
     proxy: {
@@ -11,12 +11,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       execute: {
         init: {
           methodName: "initialize",
-          args: [""],
+          args: [],
         },
       },
     },
   });
-
 };
 
 module.exports.tags = ["all", "supplies"];

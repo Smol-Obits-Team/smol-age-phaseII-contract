@@ -2,16 +2,16 @@
 pragma solidity 0.8.17;
 
 import {Lib} from "./library/Lib.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
-import {IBones, IERC20} from "./interfaces/IBones.sol";
+import {IBones} from "./interfaces/IBones.sol";
 import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import {ITreasure} from "./interfaces/ITreasure.sol";
 import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 
-contract Supplies is ERC1155Upgradeable {
+contract Supplies is ERC1155Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
 
-    address private owner;
     address phase2Address;
     address private treasure;
     address private bones;
@@ -33,13 +33,20 @@ contract Supplies is ERC1155Upgradeable {
         Treasure
     }
 
-    function initialize(string memory _baseUri) external initializer {
-        owner = msg.sender;
+    function initialize(
+        address _bones,
+        address _magic,
+        address _treasure,
+        string memory _baseUri
+    ) external initializer {
+        _initializeOwner(msg.sender);
+        bones = _bones;
+        magic = _magic;
+        treasure = _treasure;
         baseUri = _baseUri;
     }
 
-    function setPhase2Addresss(address _phase2Address) external {
-        if (owner != msg.sender) revert Lib.NotAuthorized();
+    function setPhase2Addresss(address _phase2Address) external onlyOwner {
         phase2Address = _phase2Address;
     }
 
@@ -49,22 +56,39 @@ contract Supplies is ERC1155Upgradeable {
      */
 
     function mint(
-        address _to,
-        uint256 _tokenId,
-        uint256 _amount,
-        Curr _curr
+        uint256[] calldata _tokenId,
+        uint256[] calldata _amount,
+        Curr[] calldata _curr
     ) public {
-        if (_tokenId > 3) revert Lib.InvalidTokenId();
-        payForToken(_curr);
-        _mint(_to, _tokenId, _amount, "");
+        uint256 i;
+        if (_tokenId.length != _amount.length || _amount.length != _curr.length)
+            revert Lib.LengthsNotEqual();
+        for (; i < _tokenId.length; ) {
+            if (_tokenId[i] > 3 || _tokenId[i] < 1) revert Lib.InvalidTokenId();
+            payForToken(_curr[i], _amount[i]);
+            _mint(msg.sender, _tokenId[i], _amount[i], "");
+            unchecked {
+                ++i;
+            }
+        }
     }
 
-    function payForToken(Curr _curr) internal {
+    function payForToken(Curr _curr, uint256 _amount) internal {
         if (_curr == Curr.Magic)
-            IERC20(magic).transferFrom(msg.sender, address(this), MAGIC_PRICE);
-        if (_curr == Curr.Bones) IBones(bones).burn(msg.sender, BONES_PRICE);
+            SafeTransferLib.safeTransferFrom(
+                magic,
+                msg.sender,
+                address(this),
+                MAGIC_PRICE * _amount
+            );
+        if (_curr == Curr.Bones)
+            IBones(bones).burn(msg.sender, BONES_PRICE * _amount);
         if (_curr == Curr.Treasure)
-            ITreasure(treasure).burn(msg.sender, 1, TREASURE_MOONROCK_VALUE);
+            ITreasure(treasure).burn(
+                msg.sender,
+                1,
+                TREASURE_MOONROCK_VALUE * _amount
+            );
     }
 
     function setApprovalForAll(

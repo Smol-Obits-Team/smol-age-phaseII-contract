@@ -72,6 +72,7 @@ library Lib {
         uint256 rewardRate = getRewardRate(_lockPeriod);
 
         uint256 time = (block.timestamp - _lastRewardTime) / 1 days;
+
         return
             (rewardRate *
                 time -

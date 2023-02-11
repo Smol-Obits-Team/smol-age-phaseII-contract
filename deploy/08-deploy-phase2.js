@@ -44,7 +44,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   // can create a function to sort the correct address for the current chainId
 
   try {
-    const phase2 = await deploy("Phase2", {
+    await deploy("Phase2", {
       from: deployer,
       libraries: {
         Lib: helperLibrary.address,

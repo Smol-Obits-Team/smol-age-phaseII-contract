@@ -2,5 +2,5 @@
 pragma solidity 0.8.17;
 
 interface ITreasure {
-    function burn(address account, uint256 id, uint256 value) external;
+    function burn(address _account, uint256 _id, uint256 _value) external;
 }

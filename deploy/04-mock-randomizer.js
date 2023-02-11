@@ -4,7 +4,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const chainId = network.config.chainId;
 
   if (chainId === 31337) {
-    const randomizer = await deploy("Randomizer", {
+    await deploy("Randomizer", {
       from: deployer,
       proxy: {
         owner: deployer,
@@ -12,7 +12,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       },
       log: true,
     });
-
   }
 };
 

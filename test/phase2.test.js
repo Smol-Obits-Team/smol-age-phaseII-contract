@@ -10,6 +10,9 @@ describe("test phase two", () => {
     pits,
     animals,
     supplies,
+    treasure,
+    magic,
+    randomizer,
     consumables;
 
   const INITIAL_SUPPLY = 10_000_000;
@@ -44,6 +47,9 @@ describe("test phase two", () => {
     animals = await ethers.getContract("SmolAgeAnimals");
     supplies = await ethers.getContract("Supplies");
     consumables = await ethers.getContract("Consumables");
+    treasure = await ethers.getContract("mERC1155");
+    magic = await ethers.getContract("mERC20");
+    randomizer = await ethers.getContract("Randomizer");
 
     neandersmol.setApprovalForAll(phaseII.address, true);
     const balance = await bones.balanceOf(owner.address);
@@ -53,6 +59,9 @@ describe("test phase two", () => {
     await animals.setApprovalForAll(phaseII.address, true);
     await neandersmol.connect(player).mint(1);
     await consumables.setAllowedAddress(phaseII.address, true);
+    await bones.approve(supplies.address, balance);
+    await magic.approve(supplies.address, balance);
+    await treasure.setApprovalForAll(supplies.address, true);
   });
 
   it("enter pits", async () => {
@@ -228,7 +237,7 @@ describe("test phase two", () => {
     await increaseTime(30 * 24);
     const tx = await phaseII.leaveDevelopmentGround([1]);
     expect(await bones.balanceOf(owner.address)).to.equal(
-      bal.add(toWei("1000"))
+      bal.add(toWei("300"))
     );
     expect(tx).to.emit("LeaveDevelopmentGround");
   });
@@ -311,6 +320,7 @@ describe("test phase two", () => {
       "InvalidTokenForThisJob"
     );
 
+    await supplies.mint([2, 3], [5, 5], [2, 1]);
     const tx = await phaseII.enterLaborGround([2, 4], [2, 3], [1, 2]);
     const txRes = await tx.wait();
     const blockBefore = await ethers.provider.getBlock(
@@ -332,22 +342,27 @@ describe("test phase two", () => {
     await expect(
       phaseII.bringInAnimalsToLaborGround([2], [3])
     ).to.be.revertedWith("NotYourToken");
+
+    await supplies.mint([3], [1], [0]);
     await phaseII.enterLaborGround([2], [3], [2]);
     await phaseII.bringInAnimalsToLaborGround([2], [0]);
     expect((await phaseII.getLaborGroundInfo(2)).animalId).to.equal(1);
   });
   it("remove animals from labor ground", async () => {
+    await supplies.mint([3], [5], [0]);
     await phaseII.enterLaborGround([2], [3], [2]);
     await phaseII.bringInAnimalsToLaborGround([2], [0]);
     await expect(
       phaseII.removeAnimalsFromLaborGround([1], [1])
     ).to.be.revertedWith("NotYourToken");
     await expect(
-      phaseII.removeAnimalsFromLaborGround([2], [1])
+      phaseII.removeAnimalsFromLaborGround([3], [1])
     ).to.be.revertedWith("NotYourToken");
     await phaseII.removeAnimalsFromLaborGround([2], [0]);
   });
   it("bring animals and claim collectables from labor ground", async () => {
+    await supplies.mint([1, 2, 3], [3, 2, 2], [0, 1, 2]);
+    await supplies.setApprovalForAll(phaseII.address, true);
     await phaseII.enterLaborGround(
       [4, 2, 5, 6, 7, 8, 9],
       [1, 2, 3, 1, 2, 3, 1],
@@ -366,6 +381,8 @@ describe("test phase two", () => {
     await phaseII.claimCollectables([2, 4, 5, 6, 7, 8]);
   });
   it("leave labor ground", async () => {
+    await supplies.mint([1, 2], [2, 2], [0, 1]);
+    await supplies.setApprovalForAll(phaseII.address, true);
     await phaseII.enterLaborGround([4, 2], [1, 2], [0, 1]);
     expect((await phaseII.getLaborGroundInfo(4)).owner).to.equal(owner.address);
     expect((await phaseII.getLaborGroundInfo(2)).owner).to.equal(owner.address);
@@ -431,19 +448,26 @@ describe("test phase two", () => {
     );
   });
   it("get address", async () => {
-    const [a, b, c, d, e, f] = await phaseII.getAddress();
+    const [a, b, c, d, e, f, g] = await phaseII.getAddress();
     expect(a).to.equal(pits.address);
     expect(b).to.equal(bones.address);
     expect(c).to.equal(animals.address);
     expect(d).to.equal(supplies.address);
-    expect(e).to.equal(consumables.address);
-    expect(f).to.equal(neandersmol.address);
+    expect(e).to.equal(randomizer.address);
+    expect(f).to.equal(consumables.address);
+    expect(g).to.equal(neandersmol.address);
   });
   it("major supplies tests", async () => {
     expect(await supplies.name()).to.equal("Supplies");
     expect(await supplies.symbol()).to.equal("supplies");
     expect(await supplies.uri(1)).to.equal("1");
-    await expect(supplies.mint(owner.address, 4, 1)).to.be.revertedWith(
+    await expect(supplies.mint([1], [3], [])).to.be.revertedWith(
+      "LengthsNotEqual"
+    );
+    await expect(supplies.mint([4], [3], [1])).to.be.revertedWith(
+      "InvalidTokenId"
+    );
+    await expect(supplies.mint([0], [3], [1])).to.be.revertedWith(
       "InvalidTokenId"
     );
     await expect(
@@ -452,7 +476,10 @@ describe("test phase two", () => {
   });
   it("consumables", async () => {
     expect(await consumables.name()).to.equal("Consumables");
-    expect(await consumables.symbol()).to.equal("");
-    expect(await consumables.uri(1)).to.equal("");
+    expect(await consumables.symbol()).to.equal("consumables");
+    expect(await consumables.uri(1)).to.equal("1");
+    await expect( consumables.mint(owner.address, 1, 1)).to.be.revertedWith(
+      "NotAuthorized"
+    );
   });
 });
