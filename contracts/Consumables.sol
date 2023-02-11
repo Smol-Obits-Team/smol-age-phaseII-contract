@@ -16,7 +16,7 @@ contract Consumables is ERC1155Upgradeable, Ownable {
     uint256 constant FUNGI = 5;
     uint256 constant PRECIOUS_MATERIAL = 6;
 
-    string private baseUri;
+    string public baseUri;
 
     mapping(address => bool) allowedTo;
 

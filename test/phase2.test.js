@@ -64,6 +64,29 @@ describe("test phase two", () => {
     await treasure.setApprovalForAll(supplies.address, true);
   });
 
+  it("initializers checks", async () => {
+    await expect(
+      phaseII.initialize(
+        pits.address,
+        bones.address,
+        animals.address,
+        supplies.address,
+        consumables.address,
+        neandersmol.address,
+        randomizer.address
+      )
+    ).to.be.revertedWith("Initializable: contract is already initialized");
+    await expect(
+      supplies.initialize(pits.address, bones.address, animals.address, "")
+    ).to.be.revertedWith("Initializable: contract is already initialized");
+    await expect(pits.initialize(bones.address)).to.be.revertedWith(
+      "Initializable: contract is already initialized"
+    );
+    await expect(consumables.initialize("")).to.be.revertedWith(
+      "Initializable: contract is already initialized"
+    );
+  });
+
   it("enter pits", async () => {
     const balance = await bones.balanceOf(owner.address);
     await bones.approve(pits.address, balance);
@@ -80,6 +103,38 @@ describe("test phase two", () => {
     await unstakeFromPit();
     const bal = ((INITIAL_SUPPLY * 3 - INITIAL_SUPPLY) / 10).toString();
     expect(await pits.getTotalBonesStaked()).to.equal(toWei(bal));
+  });
+
+  it("check pits rej", async () => {
+    await expect(
+      pits.stakeBonesInYard(toWei((INITIAL_SUPPLY * 3).toString()))
+    ).to.be.revertedWith("BalanceIsInsufficient");
+    await expect(
+      pits.stakeBonesInYard(toWei(((INITIAL_SUPPLY * 3) / 10).toString()))
+    ).to.be.revertedWith("0x7939f424");
+    const balance = await bones.balanceOf(owner.address);
+    await bones.approve(pits.address, balance);
+    const tx = await pits.stakeBonesInYard(
+      toWei(((INITIAL_SUPPLY * 3) / 10).toString())
+    );
+    const txRes = await tx.wait();
+    const blockBefore = await ethers.provider.getBlock(
+      txRes.logs[0].blockNumber
+    );
+    expect(await pits.totalDaysOff()).to.equal("0");
+    expect(await pits.getDaysOff(blockBefore.timestamp)).to.equal("0");
+
+    await expect(
+      pits.removeBonesFromYard(toWei(INITIAL_SUPPLY.toString()))
+    ).to.be.revertedWith("BalanceIsInsufficient");
+    const txr = await pits.removeBonesFromYard(toWei("1000"));
+    const txR = await txr.wait();
+    const blockB = await ethers.provider.getBlock(txR.logs[0].blockNumber);
+    expect(await pits.timeOut()).to.equal(blockB.timestamp);
+    await increaseTime(24);
+    await pits.stakeBonesInYard(toWei("1200"));
+    expect(await pits.getDaysOff(blockB.timestamp)).to.equal("1");
+    expect(await pits.totalDaysOff()).to.equal("1");
   });
 
   it("enter development ground", async () => {
@@ -457,10 +512,13 @@ describe("test phase two", () => {
     expect(f).to.equal(consumables.address);
     expect(g).to.equal(neandersmol.address);
   });
-  it("major supplies tests", async () => {
+  it("supplies tests", async () => {
     expect(await supplies.name()).to.equal("Supplies");
     expect(await supplies.symbol()).to.equal("supplies");
-    expect(await supplies.uri(1)).to.equal("ipfs://QmZyUXadJvNRWq99nKbtxL66ZmP2Z8faWDTdFsGYyJnS84/1");
+    expect(await supplies.uri(1)).to.equal(
+      "ipfs://QmXf9RLWoVfC2hzVFUBhka22bTqveGa8nKjUJs4tGffbjD/1"
+    );
+    expect(await supplies.owner()).to.equal(owner.address);
     await expect(supplies.mint([1], [3], [])).to.be.revertedWith(
       "LengthsNotEqual"
     );
@@ -473,12 +531,21 @@ describe("test phase two", () => {
     await expect(
       supplies.setApprovalForAll(pits.address, true)
     ).to.be.revertedWith("NotAuthorized");
+    await expect(
+      supplies.connect(player).setPhase2Addresss(pits.address)
+    ).to.be.revertedWith("Unauthorized");
   });
   it("consumables", async () => {
     expect(await consumables.name()).to.equal("Consumables");
     expect(await consumables.symbol()).to.equal("consumables");
-    expect(await consumables.uri(1)).to.equal("ipfs://QmZyUXadJvNRWq99nKbtxL66ZmP2Z8faWDTdFsGYyJnS84/1");
-    await expect( consumables.mint(owner.address, 1, 1)).to.be.revertedWith(
+    expect(await consumables.uri(1)).to.equal(
+      "ipfs://QmZyUXadJvNRWq99nKbtxL66ZmP2Z8faWDTdFsGYyJnS84/1"
+    );
+
+    await expect(
+      consumables.connect(player).setAllowedAddress(pits.address, true)
+    ).to.be.revertedWith("Unauthorized");
+    await expect(consumables.mint(owner.address, 1, 1)).to.be.revertedWith(
       "NotAuthorized"
     );
   });

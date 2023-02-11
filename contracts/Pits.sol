@@ -8,12 +8,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract Pits is Initializable {
-    IERC20 private bones;
-    uint256 private bonesStaked;
+    IERC20 public bones;
+    uint256 public bonesStaked;
 
-    uint256 private timeOut;
+    uint256 public timeOut;
 
-    uint256 private totalDaysOff;
+    uint256 public totalDaysOff;
 
     mapping(address => uint256) private balance;
     mapping(uint256 => uint256) private trackDaysOff;
@@ -42,6 +42,23 @@ contract Pits is Initializable {
             trackDaysOff[timeOut] = daysOut;
             totalDaysOff += daysOut;
         }
+
+        emit StakeBonesInYard(msg.sender, _amount);
+    }
+
+    function removeBonesFromYard(uint256 _amount) external {
+        if (_amount > balance[msg.sender]) revert Lib.BalanceIsInsufficient();
+        uint256 bonesBalance = bonesStaked;
+        balance[msg.sender] -= _amount;
+        bonesStaked -= _amount;
+        /**
+         * The balance before was greater than the minimum
+         * and now it is smaller than it
+         */
+        if (bonesBalance >= minimumBonesRequired() && !validation())
+            timeOut = block.timestamp;
+        SafeTransferLib.safeTransfer(address(bones), msg.sender, _amount);
+        emit RemoveBonesFromYard(msg.sender, _amount);
     }
 
     function getTotalDaysOff() external view returns (uint256) {
@@ -50,22 +67,6 @@ contract Pits is Initializable {
 
     function getDaysOff(uint256 _timestamp) external view returns (uint256) {
         return trackDaysOff[_timestamp];
-    }
-
-    function removeBonesFromYard(uint256 _amount) external {
-        if (_amount > balance[msg.sender]) revert();
-        uint256 bonesBalance = bonesStaked;
-        balance[msg.sender] -= _amount;
-        bonesStaked -= _amount;
-        /**
-         * The balance before was greater than the minimum
-         * and now it is smaller than it
-         */
-        if (
-            bonesBalance >= minimumBonesRequired() &&
-            bonesStaked < (bones.totalSupply() * 3) / 10
-        ) timeOut = block.timestamp;
-        SafeTransferLib.safeTransfer(address(bones), msg.sender, _amount);
     }
 
     function minimumBonesRequired() internal view returns (uint256) {
@@ -87,4 +88,7 @@ contract Pits is Initializable {
     function validation() public view returns (bool) {
         return bonesStaked >= (bones.totalSupply() * 3) / 10;
     }
+
+    event StakeBonesInYard(address indexed owner, uint256 indexed amount);
+    event RemoveBonesFromYard(address indexed owner, uint256 indexed amount);
 }

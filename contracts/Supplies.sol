@@ -12,12 +12,12 @@ import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1
 contract Supplies is ERC1155Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
 
-    address phase2Address;
-    address private treasure;
-    address private bones;
-    address private magic;
+    address public phase2Address;
+    address public treasure;
+    address public bones;
+    address public magic;
 
-    uint256 constant MAGIC_PRICE = 10 ether; // dont forget
+    uint256 constant MAGIC_PRICE = 10 ether; 
     uint256 constant BONES_PRICE = 1000 ether;
     uint256 constant TREASURE_MOONROCK_VALUE = 5;
 
