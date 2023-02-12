@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
 
 import {Lib} from "./library/Lib.sol";
 import {IPits} from "./interfaces/IPits.sol";
@@ -7,14 +7,14 @@ import {IBones} from "./interfaces/IBones.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IRandomizer} from "./interfaces/IRandomizer.sol";
 import {INeandersmol} from "./interfaces/INeandersmol.sol";
-import {IConsumables, IERC1155} from "./interfaces/IConsumables.sol";
+import {IConsumables, IERC1155Upgradeable} from "./interfaces/IConsumables.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract Phase2 is Initializable {
     IPits private pits;
     IBones private bones;
-    IERC1155 private animals;
-    IERC1155 private supplies;
+    IERC1155Upgradeable private animals;
+    IERC1155Upgradeable private supplies;
     IRandomizer private randomizer;
     IConsumables private consumables;
     INeandersmol private neandersmol;
@@ -41,9 +41,9 @@ contract Phase2 is Initializable {
         address _randomizer
     ) external initializer {
         bones = IBones(_bones);
-        animals = IERC1155(_animals);
+        animals = IERC1155Upgradeable(_animals);
         pits = IPits(_pits);
-        supplies = IERC1155(_supplies);
+        supplies = IERC1155Upgradeable(_supplies);
         randomizer = IRandomizer(_randomizer);
         consumables = IConsumables(_consumables);
         neandersmol = INeandersmol(_neandersmol);

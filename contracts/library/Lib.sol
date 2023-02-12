@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
 
 import {IPits} from "../interfaces/IPits.sol";
 import {INeandersmol} from "../interfaces/INeandersmol.sol";
