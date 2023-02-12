@@ -57,7 +57,7 @@ contract Phase2 is Initializable {
         uint256 i;
         checkLength(_tokenId, _lockTime);
         if (_lockTime.length != _ground.length) revert Lib.LengthsNotEqual();
-        if (!pits.validation()) revert Lib.DevelopmentGroundIsLocked();
+        Lib.pitsValidationCheck(pits);
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             Lib.DevelopmentGround storage token = developmentGround[tokenId];
@@ -87,7 +87,7 @@ contract Phase2 is Initializable {
         uint256[] calldata _amount,
         uint256[] calldata _tokenId
     ) external {
-        if (!pits.validation()) revert Lib.DevelopmentGroundIsLocked();
+        Lib.pitsValidationCheck(pits);
         checkLength(_amount, _tokenId);
         uint256 i;
         for (; i < _amount.length; ) {
@@ -368,6 +368,7 @@ contract Phase2 is Initializable {
             labor.lockTime = uint32(block.timestamp);
             labor.supplyId = uint32(supplyId);
             labor.job = _job[i];
+            labor.requestId = randomizer.requestRandomNumber();
 
             emit EnterLaborGround(msg.sender, tokenId, supplyId, _job[i]);
 
@@ -468,9 +469,10 @@ contract Phase2 is Initializable {
         uint256 _tokenId,
         uint256 _supplyId,
         uint256 _amount,
-        uint256 _min
+        uint256 _min,
+        uint256 _requestId
     ) internal {
-        uint256 random = randomizer.getRandom(_amount);
+        uint256 random = randomizer.revealRandomNumber(_requestId) % _amount;
         if (random < _min) {
             supplies.safeTransferFrom(
                 address(this),
@@ -534,8 +536,8 @@ contract Phase2 is Initializable {
         uint256 _tokenId,
         Lib.LaborGround memory labor
     ) internal returns (uint256) {
-        uint256 rnd = randomizer.getRandom(101);
-        uint animalId = labor.animalId;
+        uint256 rnd = randomizer.revealRandomNumber(labor.requestId) % 101;
+        uint256 animalId = labor.animalId;
         uint256 consumablesTokenId;
         (uint256 tokenOne, uint256 tokenTwo) = getConsumablesTokenId(labor.job);
         uint256 max;
@@ -582,7 +584,7 @@ contract Phase2 is Initializable {
         }
 
         if (max != 0 && min != 0)
-            breakOrFailed(_tokenId, labor.supplyId, max, min);
+            breakOrFailed(_tokenId, labor.supplyId, max, min, labor.requestId);
 
         if (animalId == 4) {
             rnd < 71

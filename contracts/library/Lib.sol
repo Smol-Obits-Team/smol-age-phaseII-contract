@@ -40,6 +40,7 @@ library Lib {
         uint32 lockTime;
         uint32 supplyId;
         uint32 animalId;
+        uint256 requestId;
         Jobs job;
     }
 
@@ -178,6 +179,10 @@ library Lib {
         if (_job == Jobs.Digging) return _tokenId == 1;
         if (_job == Jobs.Foraging) return _tokenId == 2;
         if (_job == Jobs.Mining) return _tokenId == 3;
+    }
+
+    function pitsValidationCheck(IPits _pits) external view {
+        if (!_pits.validation()) revert DevelopmentGroundIsLocked();
     }
 
     function leaveDevelopmentGround(
