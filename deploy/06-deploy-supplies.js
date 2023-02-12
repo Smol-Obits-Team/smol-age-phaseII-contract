@@ -1,12 +1,32 @@
+const { network } = require("ethers");
+
+const { networkConfig } = require("../helper-hardhat-config");
+
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
+  const chainId = network.config.chainId;
+  let bonesAddress, treasureAddress, magicAddress;
+  
+  if (chainId === 31337 || chainId === 421613) {
+    const bones = await ethers.getContract("Token");
+    bonesAddress = bones.address;
+    const treasure = await ethers.getContract("mERC1155");
+    treasureAddress = treasure.address;
+    const magic = await ethers.getContract("mERC20");
+    magicAddress = magic.address;
+  } else {
+    bonesAddress = networkConfig[chainId].bones;
+    treasureAddress = networkConfig[chainId].treasure;
+    magicAddress = networkConfig[chainId].magic;
+  }
 
-  const bones = await ethers.getContract("Token");
-  const treasure = await ethers.getContract("mERC1155");
-  const magic = await ethers.getContract("mERC20");
-
-  const args = [bones.address, magic.address, treasure.address, "ipfs://QmXf9RLWoVfC2hzVFUBhka22bTqveGa8nKjUJs4tGffbjD/"];
+  const args = [
+    bonesAddress,
+    magicAddress,
+    treasureAFddress,
+    "ipfs://QmXf9RLWoVfC2hzVFUBhka22bTqveGa8nKjUJs4tGffbjD/",
+  ];
 
   await deploy("Supplies", {
     from: deployer,

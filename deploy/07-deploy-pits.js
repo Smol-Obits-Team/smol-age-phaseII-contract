@@ -1,17 +1,21 @@
 const { ethers, network } = require("hardhat");
+const { networkConfig } = require("../helper-hardhat-config");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
-  const { deploy, log } = deployments;
+  const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
 
   const bones = await ethers.getContract("Token");
   let addr;
 
-  if (chainId != 42161) addr = bones.address;
-  else addr = "0x74912f00bda1c2030cf33e7194803259426e64a4";
+  if (chainId === 31337 || chainId === 421613) {
+    addr = bones.address;
+  } else {
+    addr = networkConfig[chainId].bones;
+  }
 
- await deploy("Pits", {
+  await deploy("Pits", {
     from: deployer,
     proxy: {
       owner: deployer,
@@ -26,7 +30,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
     log: true,
   });
-
 };
 
 module.exports.tags = ["all", "pits"];

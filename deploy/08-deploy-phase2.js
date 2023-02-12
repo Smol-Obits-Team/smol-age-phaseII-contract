@@ -1,30 +1,28 @@
 const { ethers, network } = require("hardhat");
-const {
-  networkConfig,
-  developmentChains,
-} = require("../helper-hardhat-config");
+const { networkConfig } = require("../helper-hardhat-config");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
 
-  let neandersmol, bones, pits, animals, supplies, consumables, randomizer;
+  let neandersmolAddress, bonesAddress, animalsAddress, randomizerAddress;
 
-  if (chainId === 31337) {
-    neandersmol = await ethers.getContract("mERC721");
-    bones = await ethers.getContract("Token");
-    pits = await ethers.getContract("Pits");
-    animals = await ethers.getContract("SmolAgeAnimals");
-    randomizer = await ethers.getContract("Randomizer");
+  if (chainId === 31337 || chainId === 421613) {
+    const neandersmol = await ethers.getContract("mERC721");
+    neandersmolAddress = neandersmol.address;
+    const bones = await ethers.getContract("Token");
+    bonesAddress = bones.address;
+    const randomizer = await ethers.getContract("Randomizer");
+    randomizerAddress = randomizer.address;
+  } else {
+    neandersmolAddress = networkConfig[chainId].neandersmol;
+    bonesAddress = networkConfig[chainId].bones;
+    animalsAddress = networkConfig[chainId].animals;
+    randomizerAddress = networkConfig[chainId].randomizer;
   }
 
-  if (chainId === 42161) {
-    neandersmol = networkConfig["42161"].neandersmol;
-    bones = networkConfig["42161"].bones;
-    animals = networkConfig["42161"].animals;
-  }
-
+  pits = await ethers.getContract("Pits");
   supplies = await ethers.getContract("Supplies");
   consumables = await ethers.getContract("Consumables");
 
@@ -33,15 +31,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
   const args = [
     pits.address,
-    bones.address,
-    animals.address,
+    bonesAddress,
+    animalsAddress,
     supplies.address,
     consumables.address,
-    neandersmol.address,
-    randomizer.address,
+    neandersmolAddress,
+    randomizerAddress,
   ];
-
-  // can create a function to sort the correct address for the current chainId
 
   try {
     await deploy("Phase2", {
