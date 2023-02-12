@@ -45,7 +45,8 @@ library Lib {
 
     struct Caves {
         address owner;
-        uint96 stakingTime;
+        uint48 stakingTime;
+        uint48 lastRewardTimestamp;
     }
 
     enum Jobs {

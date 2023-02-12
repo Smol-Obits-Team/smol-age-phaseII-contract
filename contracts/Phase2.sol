@@ -139,25 +139,12 @@ contract Phase2 is Initializable {
                     trackTime[_tokenId][i],
                     trackTime[_tokenId][i + 1]
                 );
-                /*
-                 * init----------------unlock-----------current time
-                 * currenttime > init + unlock✅
-                 */
                 if (block.timestamp < time + 30 days && !_all) continue;
 
                 block.timestamp < time + 30 days && _all
                     ? amount += trackToken[_tokenId][time] / 2
                     : amount += trackToken[_tokenId][time];
 
-                // 1000 - 1
-                // 1000 - 2 remove this -> trackTime[_tokenId][2] = 0
-                // 1000 - 3 remove this -> trackTime[_tokenId][3] = this time
-                // 1000 - 4 takes this time
-                // 1000 - 5
-                /**
-                 * uint prev = trackTime[_tokenId][i+1];
-                 * trackTime[_tokenId][i] = prev
-                 */
                 _all || devGround.amountPosition == 1
                     ? trackTime[_tokenId][i] = 0
                     : trackTime[_tokenId][i] = prev;
@@ -250,13 +237,12 @@ contract Phase2 is Initializable {
         if (remainder == _amount) revert Lib.WrongMultiple(); // if the amount is less than Minimum
         if (remainder != 0) bones.mint(msg.sender, remainder); // if the amount is greater than minimum but wrong multiple
         uint256 newAmount = _amount - remainder;
-        bones.mint(address(this), newAmount);
-
         updateDevelopmentGround(
             developmentGround[_tokenId],
             _tokenId,
             newAmount
         );
+        bones.mint(address(this), newAmount);
         emit StakeBonesInDevelopmentGround(msg.sender, newAmount, _tokenId);
     }
 
@@ -286,9 +272,9 @@ contract Phase2 is Initializable {
     function leaveDevelopmentGround(uint256 _tokenId) internal {
         Lib.DevelopmentGround storage devGround = developmentGround[_tokenId];
         Lib.leaveDevelopmentGround(devGround);
-        if (devGround.bonesStaked > 0) removeBones(_tokenId, true);
         if (getDevelopmentGroundBonesReward(_tokenId) > 0)
             claimDevelopmentGroundBonesReward(_tokenId, false);
+        if (devGround.bonesStaked > 0) removeBones(_tokenId, true);
         delete developmentGround[_tokenId];
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
         emit LeaveDevelopmentGround(msg.sender, _tokenId);
@@ -303,7 +289,8 @@ contract Phase2 is Initializable {
                 revert Lib.NotYourToken();
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             cave.owner = msg.sender;
-            cave.stakingTime = uint96(block.timestamp);
+            cave.stakingTime = uint48(block.timestamp);
+            cave.lastRewardTimestamp = uint48(block.timestamp);
             emit EnterCaves(msg.sender, tokenId, block.timestamp);
             unchecked {
                 ++i;
@@ -331,7 +318,7 @@ contract Phase2 is Initializable {
     function claimCaveReward(uint256 _tokenId) internal {
         uint256 reward = getCavesReward(_tokenId);
         if (reward == 0) revert Lib.ZeroBalanceError();
-        caves[_tokenId].stakingTime = uint96(block.timestamp);
+        caves[_tokenId].lastRewardTimestamp = uint48(block.timestamp);
         bones.mint(msg.sender, reward);
         emit ClaimCaveReward(msg.sender, _tokenId, reward);
     }
@@ -350,8 +337,11 @@ contract Phase2 is Initializable {
 
     function getCavesReward(uint256 _tokenId) public view returns (uint256) {
         Lib.Caves memory cave = caves[_tokenId];
-        if (cave.stakingTime == 0) return 0;
-        return ((block.timestamp - cave.stakingTime) / 1 days) * 10 * TO_WEI;
+        if (cave.lastRewardTimestamp == 0) return 0;
+        return
+            ((block.timestamp - cave.lastRewardTimestamp) / 1 days) *
+            10 *
+            TO_WEI;
     }
 
     function enterLaborGround(
@@ -460,7 +450,6 @@ contract Phase2 is Initializable {
         if (consumablesTokenId != 0)
             consumables.mint(msg.sender, consumablesTokenId, 1);
 
-        labor.supplyId = 0;
         labor.lockTime = uint32(block.timestamp);
         emit ClaimCollectable(msg.sender, _tokenId);
     }
@@ -640,9 +629,8 @@ contract Phase2 is Initializable {
 
     function getCavesInfo(
         uint256 _tokenId
-    ) external view returns (address, uint256) {
-        Lib.Caves memory cave = caves[_tokenId];
-        return (cave.owner, cave.stakingTime);
+    ) external view returns (Lib.Caves memory cave) {
+        return caves[_tokenId];
     }
 
     function getLaborGroundInfo(

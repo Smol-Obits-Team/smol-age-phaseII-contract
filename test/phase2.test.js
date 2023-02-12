@@ -477,7 +477,7 @@ describe("test phase two", () => {
     const blockBefore = await ethers.provider.getBlock(
       txRes.logs[0].blockNumber
     );
-    expect((await phaseII.getCavesInfo(1))[1]).to.equal(blockBefore.timestamp);
+    expect((await phaseII.getCavesInfo(1))[2]).to.equal(blockBefore.timestamp);
     expect(await bones.totalSupply()).to.equal(
       toWei((INITIAL_SUPPLY + 10).toString())
     );
@@ -495,12 +495,16 @@ describe("test phase two", () => {
     );
     await increaseTime(24 * 100);
     await phaseII.leaveCave([1]);
-    const [theOwner, time] = await phaseII.getCavesInfo(1);
-    expect(theOwner).to.equal("0x0000000000000000000000000000000000000000");
-    expect(time).to.equal("0");
+    const info = await phaseII.getCavesInfo(1);
+    expect(info.owner).to.equal("0x0000000000000000000000000000000000000000");
+    expect(info.lastRewardTimestamp).to.equal(0);
     expect(await bones.totalSupply()).to.equal(
       toWei((INITIAL_SUPPLY + 1000).toString())
     );
+    await phaseII.enterCaves([1]);
+    await increaseTime(24 * 100);
+    await phaseII.claimCaveReward([1]);
+    await phaseII.leaveCave([1]);
   });
   it("get address", async () => {
     const [a, b, c, d, e, f, g] = await phaseII.getAddress();
