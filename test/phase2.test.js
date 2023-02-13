@@ -173,7 +173,7 @@ describe("test phase two", () => {
     const info = await phaseII.getDevelopmentGroundInfo(1);
     expect(info.owner).to.equal(owner.address);
     expect(info.lockPeriod).to.equal(toDays(50));
-    expect(info.lockTime).to.equal(blockBefore.timestamp);
+    expect(info.entryTime).to.equal(blockBefore.timestamp);
     expect((await phaseII.getDevelopmentGroundInfo(3)).ground).to.equal(1);
   });
   it("stake bones in development ground", async () => {
@@ -191,7 +191,7 @@ describe("test phase two", () => {
     ).to.be.revertedWith("BalanceIsInsufficient");
     await expect(
       phaseII.stakeBonesInDevelopmentGround([toWei("1001")], [1])
-    ).to.be.revertedWith("TokenNotInDevelopmentGround");
+    ).to.be.revertedWith("NeandersmolIsNotInDevelopmentGround");
     await phaseII.enterDevelopmentGround([1], [toDays(50)], [1]);
     await expect(
       phaseII.stakeBonesInDevelopmentGround([toWei("1001")], [1])
@@ -428,8 +428,6 @@ describe("test phase two", () => {
       [4, 2, 5, 6, 7, 8],
       [0, 1, 2, 3, 4, 5]
     );
-    // token 4 either get 1 or 4
-    // token 2 either gets 2 or 5
     await expect(phaseII.claimCollectables([4])).to.be.revertedWith(
       "CannotClaimNow"
     );

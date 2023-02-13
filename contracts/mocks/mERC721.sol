@@ -3,10 +3,14 @@ pragma solidity ^0.8.17;
 
 import {Lib} from "../library/Lib.sol";
 import {Ownable} from "solady/src/auth/Ownable.sol";
+import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
 contract mERC721 is ERC721Upgradeable, Ownable {
-    uint256 tokenId;
+    using StringsUpgradeable for uint256;
+    uint256 public tokenId;
+
+    string public uri;
 
     modifier isAllowed() {
         _isAllowed();
@@ -80,5 +84,15 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         uint256 _tokenId
     ) external view returns (PrimarySkill memory) {
         return tokenToSkill[_tokenId];
+    }
+
+    function setURI(string memory _uri) external onlyOwner {
+        uri = _uri;
+    }
+
+    function tokenURI(
+        uint256 _tokenId
+    ) public view override returns (string memory) {
+        return string(abi.encodePacked(uri, _tokenId.toString()));
     }
 }

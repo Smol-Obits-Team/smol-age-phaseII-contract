@@ -4,24 +4,22 @@ pragma solidity ^0.8.17;
 import {Lib} from "./library/Lib.sol";
 import {IPits} from "./interfaces/IPits.sol";
 import {IBones} from "./interfaces/IBones.sol";
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IRandomizer} from "./interfaces/IRandomizer.sol";
 import {INeandersmol} from "./interfaces/INeandersmol.sol";
+import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IConsumables, IERC1155Upgradeable} from "./interfaces/IConsumables.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract Phase2 is Initializable {
     IPits private pits;
     IBones private bones;
-    IERC1155Upgradeable private animals;
-    IERC1155Upgradeable private supplies;
     IRandomizer private randomizer;
     IConsumables private consumables;
     INeandersmol private neandersmol;
+    IERC1155Upgradeable private animals;
+    IERC1155Upgradeable private supplies;
 
-    uint256 private constant TO_WEI = 10 ** 18;
-
-    uint256 private constant MINIMUM_BONE_STAKE = 1000 * TO_WEI;
+    uint256 private constant MINIMUM_BONE_STAKE = 1000 * 10 ** 18;
 
     mapping(uint256 => Lib.Caves) private caves;
     mapping(uint256 => Lib.LaborGround) private laborGround;
@@ -49,6 +47,14 @@ contract Phase2 is Initializable {
         neandersmol = INeandersmol(_neandersmol);
     }
 
+    /**
+     * @dev Enters the DevelopmentGround by transferring the tokens from the sender to the contract
+     * and setting the development ground data such as owner, entry time, lock period, etc.
+     * @param _tokenId Array of token IDs to be transferred
+     * @param _lockTime Array of lock times for each corresponding token
+     * @param _ground Array of grounds for each corresponding token
+     */
+
     function enterDevelopmentGround(
         uint256[] calldata _tokenId,
         uint256[] calldata _lockTime,
@@ -63,14 +69,14 @@ contract Phase2 is Initializable {
             Lib.DevelopmentGround storage devGround = developmentGround[
                 tokenId
             ];
-            Lib.enterDevelopmentGround(neandersmol, pits, tokenId, lockTime);
+            Lib.enterDevelopmentGround(neandersmol, tokenId, lockTime);
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             devGround.owner = msg.sender;
-            devGround.lockTime = uint64(block.timestamp);
+            devGround.entryTime = uint64(block.timestamp);
             devGround.lockPeriod = uint64(lockTime);
             devGround.lastRewardTime = uint64(block.timestamp);
             devGround.ground = _ground[i];
-            devGround.currentLockPeriod = pits.getTimeOut();
+            devGround.currentPitsLockPeriod = pits.getTimeOut();
 
             emit EnterDevelopmentGround(
                 msg.sender,
@@ -84,6 +90,13 @@ contract Phase2 is Initializable {
             }
         }
     }
+
+    /**
+     * @dev Stakes the bones in the DevelopmentGround by transferring the bones from the sender to the contract
+     * and updating the development ground data.
+     * @param _amount Array of amounts of bones to be transferred
+     * @param _tokenId Array of token IDs for the corresponding amounts of bones
+     */
 
     function stakeBonesInDevelopmentGround(
         uint256[] calldata _amount,
@@ -112,6 +125,12 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     * @dev Removes bones from a specific development ground.
+     * @param _tokenId The unique identifier for the development ground
+     * @param _all Indicates whether to remove all bones or just a portion of them
+     */
+
     function removeBones(
         uint256[] calldata _tokenId,
         bool[] calldata _all
@@ -127,7 +146,11 @@ contract Phase2 is Initializable {
         }
     }
 
-    //@remind check this function again
+    /**
+     * @dev Helper function to remove bones from a specific development ground
+     * @param _tokenId The unique identifier for the development ground
+     * @param _all Indicates whether to remove all bones if it will be taxed or not
+     */
     function removeBones(uint256 _tokenId, bool _all) internal {
         Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
         if (devGround.bonesStaked == 0) revert Lib.ZeroBalanceError();
@@ -169,7 +192,11 @@ contract Phase2 is Initializable {
         emit RemoveBones(msg.sender, _tokenId, amount);
     }
 
-    // check this with gas
+    /**
+     *  This function develops the primary skill of the `_tokenId` development ground.
+     * @param _tokenId ID of the development ground
+     */
+
     function developPrimarySkill(uint256 _tokenId) internal {
         // make sure bones staked is more than 30% the total supply
         Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
@@ -186,6 +213,12 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     * This function retrieves the primary skill of the `_tokenId` development ground.
+     * @param _tokenId ID of the development ground
+     * @return The primary skill level
+     */
+
     function getPrimarySkill(uint256 _tokenId) public view returns (uint256) {
         Lib.DevelopmentGround memory token = developmentGround[_tokenId];
 
@@ -193,13 +226,19 @@ contract Phase2 is Initializable {
             Lib.calculatePrimarySkill(
                 token.bonesStaked,
                 token.amountPosition,
-                token.currentLockPeriod,
+                token.currentPitsLockPeriod,
                 _tokenId,
                 pits,
                 trackTime,
                 trackToken
             );
     }
+
+    /**
+     * This function allows the owner of the development ground to claim the rewards earned by the development ground.
+     * @param _tokenId ID of the development ground
+     * @param _stake Whether to stake the reward bones in the development ground
+     */
 
     function claimDevelopmentGroundBonesReward(
         uint256 _tokenId,
@@ -217,6 +256,12 @@ contract Phase2 is Initializable {
         emit ClaimDevelopmentGroundBonesReward(msg.sender, _tokenId, _stake);
     }
 
+    /**
+     * This function allows the owner of multiple development grounds to claim rewards earned by them.
+     * @param _tokenId ID of the development ground
+     * @param _stake Whether to stake the reward bones in the development ground
+     */
+
     function claimDevelopmentGroundBonesReward(
         uint256[] calldata _tokenId,
         bool[] calldata _stake
@@ -231,6 +276,11 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     * @dev Stakes the specified amount of Bones in the Development Ground of the specified token ID.
+     * @param _tokenId The ID of the Neandersmol token that represents the Development Ground.
+     * @param _amount The amount of Bones to be staked.
+     */
     function stakeBonesInDevelopmentGround(
         uint256 _tokenId,
         uint256 _amount
@@ -248,18 +298,29 @@ contract Phase2 is Initializable {
         emit StakeBonesInDevelopmentGround(msg.sender, newAmount, _tokenId);
     }
 
+    /**
+     * @dev Returns the reward for the bones staked in the development ground.
+     * @param _tokenId The token ID for the development ground.
+     * @return The reward for the bones staked in the development ground.
+     */
+
     function getDevelopmentGroundBonesReward(
         uint256 _tokenId
     ) public view returns (uint256) {
         Lib.DevelopmentGround memory devGround = developmentGround[_tokenId];
         return
             Lib.getDevelopmentGroundBonesReward(
-                devGround.currentLockPeriod,
+                devGround.currentPitsLockPeriod,
                 devGround.lockPeriod,
                 devGround.lastRewardTime,
                 pits
             );
     }
+
+    /**
+     * @dev Allows the owner to leave the development ground. This will transfer the token back to the owner and remove any bones staked in the development ground.
+     * @param _tokenId The token ID of the development ground to leave.
+     */
 
     function leaveDevelopmentGround(uint256[] calldata _tokenId) external {
         uint256 i;
@@ -271,6 +332,11 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     * @dev Internal function for the leaveDevelopmentGround function to remove the development ground and transfer the token back to the owner.
+     * @param _tokenId The token ID of the development ground to leave.
+     */
+
     function leaveDevelopmentGround(uint256 _tokenId) internal {
         Lib.DevelopmentGround storage devGround = developmentGround[_tokenId];
         Lib.leaveDevelopmentGround(devGround);
@@ -281,6 +347,11 @@ contract Phase2 is Initializable {
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
         emit LeaveDevelopmentGround(msg.sender, _tokenId);
     }
+
+    /**
+     * @dev Allows the owner to enter the caves. This will transfer the token to the contract and set the owner, staking time, and last reward timestamp for the caves.
+     * @param _tokenId The token ID of the caves to enter.
+     */
 
     function enterCaves(uint256[] calldata _tokenId) external {
         uint256 i;
@@ -300,6 +371,11 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     *  @dev Function to allow the owner of a Cave token to leave the cave and claim any rewards.
+     * @param _tokenId An array of Cave token IDs to be claimed and left.
+     */
+
     function leaveCave(uint256[] calldata _tokenId) external {
         uint256 i;
         for (; i < _tokenId.length; ) {
@@ -317,6 +393,11 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     * @dev Internal function to claim the rewards for a Cave token.
+     * @param _tokenId The ID of the Cave token to claim rewards for.
+     */
+
     function claimCaveReward(uint256 _tokenId) internal {
         uint256 reward = getCavesReward(_tokenId);
         if (reward == 0) revert Lib.ZeroBalanceError();
@@ -325,7 +406,10 @@ contract Phase2 is Initializable {
         emit ClaimCaveReward(msg.sender, _tokenId, reward);
     }
 
-    // after making first claim the time should be updated
+    /**
+     * @dev Function to allow the caller to claim rewards for multiple Cave tokens.
+     * @param _tokenId An array of Cave token IDs to claim rewards for.
+     */
 
     function claimCaveReward(uint256[] calldata _tokenId) external {
         uint256 i;
@@ -337,14 +421,29 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     * @dev Function to retrieve the rewards for a Cave token.
+     * @param _tokenId The ID of the Cave token to retrieve rewards for.
+     * @return The rewards for the specified Cave token.
+     */
+
     function getCavesReward(uint256 _tokenId) public view returns (uint256) {
         Lib.Caves memory cave = caves[_tokenId];
         if (cave.lastRewardTimestamp == 0) return 0;
         return
             ((block.timestamp - cave.lastRewardTimestamp) / 1 days) *
             10 *
-            TO_WEI;
+            10 ** 18;
     }
+
+    /**
+     * @notice Enters the labor ground with specified token ID and supply ID,
+     * and assigns the job to it. Transfers the token and supply ownership to the contract.
+     * Emits the "EnterLaborGround" event.
+     * @param _tokenId Array of token IDs of the labor grounds.
+     * @param _supplyId Array of supply IDs associated with the labor grounds.
+     * @param _job Array of jobs assigned to the labor grounds.
+     */
 
     function enterLaborGround(
         uint256[] calldata _tokenId,
@@ -380,38 +479,12 @@ contract Phase2 is Initializable {
         }
     }
 
-    // update the skill here too
-    function removeAnimalsFromLaborGround(
-        uint256[] calldata _tokenId,
-        uint256[] calldata _animalsId
-    ) external {
-        checkLength(_tokenId, _animalsId);
-        uint256 i;
-        for (; i < _tokenId.length; ) {
-            uint256 animalsId = _animalsId[i];
-            Lib.LaborGround storage labor = laborGround[_tokenId[i]];
-            Lib.removeAnimalsFromLaborGround(labor, animalsId);
+    /**
+     *  Brings in animals to the labor ground by calling the bringInAnimalsToLaborGround function in the Lib library and transferring the ownership of the animal token from the sender to the contract.
+     * @param _tokenId An array of token IDs representing the labor grounds.
+     * @param _animalsId An array of token IDs representing the animals.
+     */
 
-            animals.safeTransferFrom(
-                address(this),
-                msg.sender,
-                animalsId,
-                1,
-                ""
-            );
-            labor.animalId = 0; // added one since animals token id starts from 0
-            emit RemoveAnimalsFromLaborGround(
-                msg.sender,
-                _tokenId[i],
-                animalsId
-            );
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    // ability of them to remove animals and update the skill
     function bringInAnimalsToLaborGround(
         uint256[] calldata _tokenId,
         uint256[] calldata _animalsId
@@ -444,6 +517,49 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     * @notice Removes the animals from the specified labor ground.
+     * Transfers the ownership of the animals back to the sender.
+     * @param _tokenId Array of token IDs of the labor grounds.
+     * @param _animalsId Array of animals IDs associated with the labor grounds.
+     */
+    function removeAnimalsFromLaborGround(
+        uint256[] calldata _tokenId,
+        uint256[] calldata _animalsId
+    ) external {
+        checkLength(_tokenId, _animalsId);
+        uint256 i;
+        for (; i < _tokenId.length; ) {
+            uint256 animalsId = _animalsId[i];
+            Lib.LaborGround storage labor = laborGround[_tokenId[i]];
+            Lib.removeAnimalsFromLaborGround(labor, animalsId);
+
+            animals.safeTransferFrom(
+                address(this),
+                msg.sender,
+                animalsId,
+                1,
+                ""
+            );
+            labor.animalId = 0;
+            emit RemoveAnimalsFromLaborGround(
+                msg.sender,
+                _tokenId[i],
+                animalsId
+            );
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * This function allows the token owner to claim a collectable. If the token owner is not the same as the
+     * stored owner or the lock time has not yet passed, the function will revert. If there are possible claims,
+     * a consumables token will be minted for the token owner. The lock time for the labor ground is then updated.
+     * @param _tokenId The id of the labor ground token being claimed.
+     */
+
     function claimCollectable(uint256 _tokenId) internal {
         Lib.LaborGround storage labor = laborGround[_tokenId];
         if (msg.sender != labor.owner) revert Lib.NotYourToken();
@@ -457,6 +573,10 @@ contract Phase2 is Initializable {
         emit ClaimCollectable(msg.sender, _tokenId);
     }
 
+    /** 
+    *@dev This function allows a user to claim multiple collectables at once by providing an array of token IDs.
+     @param _tokenId An array of token IDs that the user wants to claim.
+*/
     function claimCollectables(uint256[] calldata _tokenId) external {
         uint256 i;
         for (; i < _tokenId.length; ) {
@@ -467,6 +587,14 @@ contract Phase2 is Initializable {
         }
     }
 
+    /**
+     * @dev This function decides whether the supply will break or fail when the random number generated is smaller than `_min`.
+     * @param _tokenId ID of the token that the supply is associated with.
+     * @param _supplyId ID of the supply.
+     * @param _amount Total amount of possible outcomes.
+     * @param _min The minimum value of the random number that will cause the supply to break or fail.
+     * @param _requestId Request ID for accessing the random number.
+     */
     function breakOrFailed(
         uint256 _tokenId,
         uint256 _supplyId,
@@ -486,6 +614,11 @@ contract Phase2 is Initializable {
             laborGround[_tokenId].supplyId = 0;
         }
     }
+
+    /**
+     * @dev This function allows a user to leave the LaborGround and receive their animal, supply, and collectable.
+     * @param _tokenId An array of token IDs that the user wants to leave.
+     */
 
     function leaveLaborGround(uint256[] calldata _tokenId) external {
         uint256 i;
@@ -520,7 +653,13 @@ contract Phase2 is Initializable {
         }
     }
 
-    // still check this
+    /**
+     * @dev This function updates the DevelopmentGround by adding `_amount` to `_devGround.bonesStaked` and increments `_devGround.amountPosition`.
+     * @param _devGround The DevelopmentGround to be updated.
+     * @param _tokenId The token ID associated with the DevelopmentGround.
+     * @param _amount The amount to be added to `_devGround.bonesStaked`.
+     */
+
     function updateDevelopmentGround(
         Lib.DevelopmentGround storage _devGround,
         uint256 _tokenId,
@@ -533,6 +672,13 @@ contract Phase2 is Initializable {
             trackTime[_tokenId][_devGround.amountPosition] = block.timestamp;
         }
     }
+
+    /**
+     * @dev Function to check the possible claims of an animal job
+     * @param _tokenId ID of the token
+     * @param labor LaborGround struct with the information of the job
+     * @return consumablesTokenId The token ID of the consumables to be claimed
+     */
 
     function checkPossibleClaims(
         uint256 _tokenId,
@@ -588,23 +734,20 @@ contract Phase2 is Initializable {
         if (max != 0 && min != 0)
             breakOrFailed(_tokenId, labor.supplyId, max, min, labor.requestId);
 
-        if (animalId == 4) {
-            rnd < 71
-                ? consumablesTokenId = tokenOne
-                : consumablesTokenId = tokenTwo;
-        }
-        if (animalId == 5) {
-            rnd < 66
-                ? consumablesTokenId = tokenOne
-                : consumablesTokenId = tokenTwo;
-        }
-        if (animalId == 6) {
-            rnd < 61
-                ? consumablesTokenId = tokenOne
-                : consumablesTokenId = tokenTwo;
-        }
+        if (animalId == 4) consumablesTokenId = rnd < 71 ? tokenOne : tokenTwo;
+
+        if (animalId == 5) consumablesTokenId = rnd < 66 ? tokenOne : tokenTwo;
+
+        if (animalId == 6) consumablesTokenId = rnd < 61 ? tokenOne : tokenTwo;
+
         return consumablesTokenId;
     }
+
+    /**
+     * @dev Function to get the consumables token IDs based on the job type
+     * @param _job Job type
+     * @return tokenIdOne and tokenIdTwo The token IDs of the consumables for the job
+     */
 
     function getConsumablesTokenId(
         Lib.Jobs _job
@@ -614,12 +757,25 @@ contract Phase2 is Initializable {
         if (_job == Lib.Jobs.Mining) (tokenIdOne, tokenIdTwo) = (3, 6);
     }
 
+    /**
+     *Check the length of two input arrays, _tokenId and _animalsId, for equality.
+     *If the lengths are not equal, the function will revert with the error "LengthsNotEqual".
+     *@dev Internal function called by other functions within the contract.
+     *@param _tokenId Array of token IDs
+     */
+
     function checkLength(
         uint256[] calldata _tokenId,
         uint256[] calldata _animalsId
     ) internal pure {
         if (_tokenId.length != _animalsId.length) revert Lib.LengthsNotEqual();
     }
+
+    /**
+     * Handle incoming ERC1155 token transfers.
+     * @dev This function is the onERC1155Received fallback function for the contract, which is triggered when the contract receives an ERC1155 token transfer.
+     * @return The selector for this function, "0x20f90a7e".
+     */
 
     function onERC1155Received(
         address,
@@ -631,11 +787,25 @@ contract Phase2 is Initializable {
         return this.onERC1155Received.selector;
     }
 
+    /**
+     * Retrieve information about a Cave token.
+     * @dev This function returns a Caves struct containing information about a Cave token, specified by its ID, _tokenId.
+     * @param _tokenId ID of the Cave token to retrieve information for
+     * @return  The Caves struct containing information about the specified Cave token.
+     */
+
     function getCavesInfo(
         uint256 _tokenId
-    ) external view returns (Lib.Caves memory cave) {
+    ) external view returns (Lib.Caves memory) {
         return caves[_tokenId];
     }
+
+    /**
+     * Retrieve information about a Labor Ground token.
+     * @dev This function returns a LaborGround struct containing information about a Labor Ground token, specified by its ID, _tokenId.
+     * @param _tokenId ID of the Labor Ground token to retrieve information for
+     * @return The LaborGround struct containing information about the specified Labor Ground token.
+     */
 
     function getLaborGroundInfo(
         uint256 _tokenId
@@ -643,12 +813,22 @@ contract Phase2 is Initializable {
         return laborGround[_tokenId];
     }
 
+    /**
+     * Retrieve information about a Development Ground token.
+     * @dev This function returns a DevelopmentGround struct containing information about a Development Ground token, specified by its ID, _tokenId.
+     * @param _tokenId ID of the Development Ground token to retrieve information for
+     * @return The DevelopmentGround struct containing information about the specified Development Ground token.
+     */
+
     function getDevelopmentGroundInfo(
         uint256 _tokenId
     ) external view returns (Lib.DevelopmentGround memory) {
         return developmentGround[_tokenId];
     }
 
+    /**
+     * @notice Returns the addresses of various contract instances that are used in this contract.
+     */
     function getAddress()
         external
         view

@@ -23,16 +23,16 @@ library Lib {
     error BalanceIsInsufficient();
     error InvalidTokenForThisJob();
     error DevelopmentGroundIsLocked();
-    error TokenNotInDevelopmentGround();
+    error NeandersmolIsNotInDevelopmentGround();
 
     struct DevelopmentGround {
         address owner;
         uint64 lockPeriod;
         uint64 amountPosition;
-        uint64 lockTime;
+        uint64 entryTime;
         uint64 lastRewardTime;
         uint256 bonesStaked;
-        uint256 currentLockPeriod;
+        uint256 currentPitsLockPeriod;
         Grounds ground;
     }
 
@@ -144,11 +144,9 @@ library Lib {
 
     function enterDevelopmentGround(
         INeandersmol _neandersmol,
-        IPits _pits,
         uint256 _tokenId,
         uint256 _lockTime
     ) external view {
-        if (!_pits.validation()) revert DevelopmentGroundIsLocked();
         if (_neandersmol.getCommonSense(_tokenId) < 100)
             revert CsIsBellowHundred();
         if (_neandersmol.ownerOf(_tokenId) != msg.sender) revert NotYourToken();
@@ -191,7 +189,7 @@ library Lib {
     ) external view {
         DevelopmentGround memory devGround = _devGround;
         if (devGround.owner != msg.sender) revert NotYourToken();
-        if (block.timestamp < devGround.lockTime + devGround.lockPeriod)
+        if (block.timestamp < devGround.entryTime + devGround.lockPeriod)
             revert NeandersmolsIsLocked();
     }
 
@@ -203,7 +201,7 @@ library Lib {
         if (_bones.balanceOf(msg.sender) < _amount)
             revert BalanceIsInsufficient();
         if (_devGround.owner != msg.sender)
-            revert TokenNotInDevelopmentGround();
+            revert NeandersmolIsNotInDevelopmentGround();
         if (_amount % MINIMUM_BONE_STAKE != 0) revert WrongMultiple();
     }
 
