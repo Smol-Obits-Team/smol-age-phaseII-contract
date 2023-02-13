@@ -53,6 +53,7 @@ describe("test phase two", () => {
 
     neandersmol.setApprovalForAll(phaseII.address, true);
     const balance = await bones.balanceOf(owner.address);
+    await neandersmol.setAuthorizedAddress(phaseII.address, true);
     await bones.approve(phaseII.address, balance);
     await supplies.setPhase2Addresss(phaseII.address);
     await supplies.setApprovalForAll(phaseII.address, true);

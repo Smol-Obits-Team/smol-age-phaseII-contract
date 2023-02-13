@@ -7,6 +7,7 @@ import {IBones} from "../interfaces/IBones.sol";
 
 library Lib {
     error CsToHigh();
+    error NotAContract();
     error NotYourToken();
     error NotAuthorized();
     error WrongMultiple();
