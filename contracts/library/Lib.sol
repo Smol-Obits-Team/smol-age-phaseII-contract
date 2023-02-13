@@ -92,7 +92,6 @@ library Lib {
         mapping(uint256 => mapping(uint256 => uint256)) storage trackTime,
         mapping(uint256 => mapping(uint256 => uint256)) storage trackToken
     ) external view returns (uint256) {
-        // make sure bones staked is more than 30% the total supply
         if (_bonesStaked == 0) return 0;
         uint256 amount;
         for (uint256 i = 1; i <= _amountPosition; ) {
