@@ -53,6 +53,7 @@ describe("test phase two", () => {
 
     neandersmol.setApprovalForAll(phaseII.address, true);
     const balance = await bones.balanceOf(owner.address);
+    await neandersmol.setAuthorizedAddress(phaseII.address, true);
     await bones.approve(phaseII.address, balance);
     await supplies.setPhase2Addresss(phaseII.address);
     await supplies.setApprovalForAll(phaseII.address, true);
@@ -172,7 +173,7 @@ describe("test phase two", () => {
     const info = await phaseII.getDevelopmentGroundInfo(1);
     expect(info.owner).to.equal(owner.address);
     expect(info.lockPeriod).to.equal(toDays(50));
-    expect(info.lockTime).to.equal(blockBefore.timestamp);
+    expect(info.entryTime).to.equal(blockBefore.timestamp);
     expect((await phaseII.getDevelopmentGroundInfo(3)).ground).to.equal(1);
   });
   it("stake bones in development ground", async () => {
@@ -190,7 +191,7 @@ describe("test phase two", () => {
     ).to.be.revertedWith("BalanceIsInsufficient");
     await expect(
       phaseII.stakeBonesInDevelopmentGround([toWei("1001")], [1])
-    ).to.be.revertedWith("TokenNotInDevelopmentGround");
+    ).to.be.revertedWith("NeandersmolIsNotInDevelopmentGround");
     await phaseII.enterDevelopmentGround([1], [toDays(50)], [1]);
     await expect(
       phaseII.stakeBonesInDevelopmentGround([toWei("1001")], [1])
@@ -427,8 +428,6 @@ describe("test phase two", () => {
       [4, 2, 5, 6, 7, 8],
       [0, 1, 2, 3, 4, 5]
     );
-    // token 4 either get 1 or 4
-    // token 2 either gets 2 or 5
     await expect(phaseII.claimCollectables([4])).to.be.revertedWith(
       "CannotClaimNow"
     );
@@ -477,7 +476,7 @@ describe("test phase two", () => {
     const blockBefore = await ethers.provider.getBlock(
       txRes.logs[0].blockNumber
     );
-    expect((await phaseII.getCavesInfo(1))[1]).to.equal(blockBefore.timestamp);
+    expect((await phaseII.getCavesInfo(1))[2]).to.equal(blockBefore.timestamp);
     expect(await bones.totalSupply()).to.equal(
       toWei((INITIAL_SUPPLY + 10).toString())
     );
@@ -495,12 +494,16 @@ describe("test phase two", () => {
     );
     await increaseTime(24 * 100);
     await phaseII.leaveCave([1]);
-    const [theOwner, time] = await phaseII.getCavesInfo(1);
-    expect(theOwner).to.equal("0x0000000000000000000000000000000000000000");
-    expect(time).to.equal("0");
+    const info = await phaseII.getCavesInfo(1);
+    expect(info.owner).to.equal("0x0000000000000000000000000000000000000000");
+    expect(info.lastRewardTimestamp).to.equal(0);
     expect(await bones.totalSupply()).to.equal(
       toWei((INITIAL_SUPPLY + 1000).toString())
     );
+    await phaseII.enterCaves([1]);
+    await increaseTime(24 * 100);
+    await phaseII.claimCaveReward([1]);
+    await phaseII.leaveCave([1]);
   });
   it("get address", async () => {
     const [a, b, c, d, e, f, g] = await phaseII.getAddress();

@@ -8,7 +8,7 @@ require("@nomiclabs/hardhat-etherscan");
 require("@openzeppelin/hardhat-upgrades");
 
 const ARBITRUM_GOERLI_RPC = process.env.ARBITRUM_GOERLI_RPC || "";
-const ARBISCAN_RPC_URL = process.env.ARBISCAN_RPC_URL || "";
+const ARBITRUM_RPC_URL = process.env.ARBISCAN_RPC_URL || "";
 const ARBISCAN_API_KEY = process.env.ARBISCAN_API_KEY || "";
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
@@ -32,7 +32,7 @@ module.exports = {
       blockConfirmations: 6,
     },
     arbitrum: {
-      url: "",
+      url: ARBITRUM_RPC_URL,
       accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
       saveDeployments: true,
       chainId: 42161,

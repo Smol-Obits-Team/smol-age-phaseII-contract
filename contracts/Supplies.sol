@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
 
 import {Lib} from "./library/Lib.sol";
 import {Ownable} from "solady/src/auth/Ownable.sol";
@@ -17,7 +17,7 @@ contract Supplies is ERC1155Upgradeable, Ownable {
     address public bones;
     address public magic;
 
-    uint256 constant MAGIC_PRICE = 10 ether; 
+    uint256 constant MAGIC_PRICE = 10 ether;
     uint256 constant BONES_PRICE = 1000 ether;
     uint256 constant TREASURE_MOONROCK_VALUE = 5;
 

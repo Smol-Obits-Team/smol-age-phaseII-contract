@@ -15,4 +15,4 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   }
 };
 
-module.exports.tags = ["all", "animals"];
+module.exports.tags = ["all", "randomizer"];

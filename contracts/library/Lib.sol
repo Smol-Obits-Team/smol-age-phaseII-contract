@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
 
 import {IPits} from "../interfaces/IPits.sol";
 import {INeandersmol} from "../interfaces/INeandersmol.sol";
@@ -7,6 +7,7 @@ import {IBones} from "../interfaces/IBones.sol";
 
 library Lib {
     error CsToHigh();
+    error NotAContract();
     error NotYourToken();
     error NotAuthorized();
     error WrongMultiple();
@@ -22,16 +23,16 @@ library Lib {
     error BalanceIsInsufficient();
     error InvalidTokenForThisJob();
     error DevelopmentGroundIsLocked();
-    error TokenNotInDevelopmentGround();
+    error NeandersmolIsNotInDevelopmentGround();
 
     struct DevelopmentGround {
         address owner;
-        uint48 lockPeriod;
-        uint48 amountPosition;
-        uint128 lockTime;
-        uint128 lastRewardTime;
+        uint64 lockPeriod;
+        uint64 amountPosition;
+        uint64 entryTime;
+        uint64 lastRewardTime;
         uint256 bonesStaked;
-        uint256 currentLockPeriod;
+        uint256 currentPitsLockPeriod;
         Grounds ground;
     }
 
@@ -40,12 +41,14 @@ library Lib {
         uint32 lockTime;
         uint32 supplyId;
         uint32 animalId;
+        uint256 requestId;
         Jobs job;
     }
 
     struct Caves {
         address owner;
-        uint96 stakingTime;
+        uint48 stakingTime;
+        uint48 lastRewardTimestamp;
     }
 
     enum Jobs {
@@ -89,7 +92,6 @@ library Lib {
         mapping(uint256 => mapping(uint256 => uint256)) storage trackTime,
         mapping(uint256 => mapping(uint256 => uint256)) storage trackToken
     ) external view returns (uint256) {
-        // make sure bones staked is more than 30% the total supply
         if (_bonesStaked == 0) return 0;
         uint256 amount;
         for (uint256 i = 1; i <= _amountPosition; ) {
@@ -141,11 +143,9 @@ library Lib {
 
     function enterDevelopmentGround(
         INeandersmol _neandersmol,
-        IPits _pits,
         uint256 _tokenId,
         uint256 _lockTime
     ) external view {
-        if (!_pits.validation()) revert DevelopmentGroundIsLocked();
         if (_neandersmol.getCommonSense(_tokenId) < 100)
             revert CsIsBellowHundred();
         if (_neandersmol.ownerOf(_tokenId) != msg.sender) revert NotYourToken();
@@ -179,12 +179,16 @@ library Lib {
         if (_job == Jobs.Mining) return _tokenId == 3;
     }
 
+    function pitsValidation(IPits _pits) external view {
+        if (!_pits.validation()) revert DevelopmentGroundIsLocked();
+    }
+
     function leaveDevelopmentGround(
         DevelopmentGround storage _devGround
     ) external view {
         DevelopmentGround memory devGround = _devGround;
         if (devGround.owner != msg.sender) revert NotYourToken();
-        if (block.timestamp < devGround.lockTime + devGround.lockPeriod)
+        if (block.timestamp < devGround.entryTime + devGround.lockPeriod)
             revert NeandersmolsIsLocked();
     }
 
@@ -196,7 +200,7 @@ library Lib {
         if (_bones.balanceOf(msg.sender) < _amount)
             revert BalanceIsInsufficient();
         if (_devGround.owner != msg.sender)
-            revert TokenNotInDevelopmentGround();
+            revert NeandersmolIsNotInDevelopmentGround();
         if (_amount % MINIMUM_BONE_STAKE != 0) revert WrongMultiple();
     }
 

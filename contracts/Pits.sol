@@ -1,7 +1,6 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
 
-import "hardhat/console.sol";
 import {Lib} from "./library/Lib.sol";
 import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";

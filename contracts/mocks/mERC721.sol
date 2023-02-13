@@ -1,13 +1,25 @@
-// SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.17;
 
+import {Lib} from "../library/Lib.sol";
+import {Ownable} from "solady/src/auth/Ownable.sol";
+import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
-contract mERC721 is ERC721Upgradeable {
-    uint256 tokenId;
+contract mERC721 is ERC721Upgradeable, Ownable {
+    using StringsUpgradeable for uint256;
+    uint256 public tokenId;
+
+    string public uri;
+
+    modifier isAllowed() {
+        _isAllowed();
+        _;
+    }
 
     function initialize() external initializer {
         mint(15);
+        _initializeOwner(msg.sender);
         commonSense[1] = 101;
         commonSense[2] = 98;
         commonSense[3] = 100;
@@ -21,6 +33,8 @@ contract mERC721 is ERC721Upgradeable {
         uint256 fighters;
     }
 
+    mapping(address => bool) public allowedTo;
+
     mapping(uint256 => PrimarySkill) private tokenToSkill;
 
     mapping(uint256 => uint256) private commonSense;
@@ -29,15 +43,24 @@ contract mERC721 is ERC721Upgradeable {
         for (uint256 i = 0; i < _amount; ++i) _mint(msg.sender, ++tokenId);
     }
 
-    function developMystics(uint256 _tokenId, uint256 _amount) external {
+    function developMystics(
+        uint256 _tokenId,
+        uint256 _amount
+    ) external isAllowed {
         tokenToSkill[_tokenId].mystics += _amount;
     }
 
-    function developFarmers(uint256 _tokenId, uint256 _amount) external {
+    function developFarmers(
+        uint256 _tokenId,
+        uint256 _amount
+    ) external isAllowed {
         tokenToSkill[_tokenId].farmers += _amount;
     }
 
-    function developFighter(uint256 _tokenId, uint256 _amount) external {
+    function developFighter(
+        uint256 _tokenId,
+        uint256 _amount
+    ) external isAllowed {
         tokenToSkill[_tokenId].fighters += _amount;
     }
 
@@ -45,9 +68,31 @@ contract mERC721 is ERC721Upgradeable {
         return commonSense[_tokenId];
     }
 
+    function setAuthorizedAddress(
+        address _addr,
+        bool _state
+    ) external onlyOwner {
+        if (_addr.code.length == 0) revert Lib.NotAContract();
+        allowedTo[_addr] = _state;
+    }
+
+    function _isAllowed() internal view {
+        if (!allowedTo[msg.sender]) revert Lib.NotAuthorized();
+    }
+
     function getPrimarySkill(
         uint256 _tokenId
     ) external view returns (PrimarySkill memory) {
         return tokenToSkill[_tokenId];
+    }
+
+    function setURI(string memory _uri) external onlyOwner {
+        uri = _uri;
+    }
+
+    function tokenURI(
+        uint256 _tokenId
+    ) public view override returns (string memory) {
+        return string(abi.encodePacked(uri, _tokenId.toString()));
     }
 }
