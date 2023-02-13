@@ -2,24 +2,38 @@ const { ethers, network } = require("hardhat");
 const { networkConfig } = require("../helper-hardhat-config");
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
-  const { deploy, log } = deployments;
+  const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
 
   let neandersmolAddress, bonesAddress, animalsAddress, randomizerAddress;
-
-  if (chainId === 31337 || chainId === 421613) {
+  /**
+   * smol - testnet and localhost
+   * bones - testnet and localhost
+   * animals - localhost
+   * randomizer - localhost
+   */
+  if (chainId === 31337) {
     const neandersmol = await ethers.getContract("mERC721");
     neandersmolAddress = neandersmol.address;
     const bones = await ethers.getContract("Token");
     bonesAddress = bones.address;
+    const animals = await ethers.getContract("SmolAgeAnimals");
+    animalsAddress = animals.address;
     const randomizer = await ethers.getContract("Randomizer");
     randomizerAddress = randomizer.address;
-  } else {
+  }
+  if (chainId === 421613) {
+    const neandersmol = await ethers.getContract("mERC721");
+    neandersmolAddress = neandersmol.address;
+    const bones = await ethers.getContract("Token");
+    bonesAddress = bones.address;
+  }
+  if (chainId === 42161) {
+    randomizerAddress = networkConfig[chainId].randomizer;
+    animalsAddress = networkConfig[chainId].animals;
     neandersmolAddress = networkConfig[chainId].neandersmol;
     bonesAddress = networkConfig[chainId].bones;
-    animalsAddress = networkConfig[chainId].animals;
-    randomizerAddress = networkConfig[chainId].randomizer;
   }
 
   pits = await ethers.getContract("Pits");

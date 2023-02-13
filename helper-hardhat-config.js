@@ -10,7 +10,7 @@ const networkConfig = {
   },
 
   421613: {
-    name: arbitrumGoerli,
+    name: "arbitrumGoerli",
     randomizer: "0x9b58fc8c7B224Ae8479DA7E6eD37CA4Ac58099a9",
     animals: "0xca8f5e151465a99504f9f176d9daf3dcfc702945",
   },

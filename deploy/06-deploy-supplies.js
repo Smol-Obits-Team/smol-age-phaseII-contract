@@ -1,4 +1,4 @@
-const { network } = require("ethers");
+const { network } = require("hardhat");
 
 const { networkConfig } = require("../helper-hardhat-config");
 
@@ -6,8 +6,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deploy } = deployments;
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
+
   let bonesAddress, treasureAddress, magicAddress;
-  
+
   if (chainId === 31337 || chainId === 421613) {
     const bones = await ethers.getContract("Token");
     bonesAddress = bones.address;
@@ -24,7 +25,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const args = [
     bonesAddress,
     magicAddress,
-    treasureAFddress,
+    treasureAddress,
     "ipfs://QmXf9RLWoVfC2hzVFUBhka22bTqveGa8nKjUJs4tGffbjD/",
   ];
 

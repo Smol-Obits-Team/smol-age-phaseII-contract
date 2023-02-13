@@ -26,10 +26,10 @@ library Lib {
 
     struct DevelopmentGround {
         address owner;
-        uint48 lockPeriod;
-        uint48 amountPosition;
-        uint128 lockTime;
-        uint128 lastRewardTime;
+        uint64 lockPeriod;
+        uint64 amountPosition;
+        uint64 lockTime;
+        uint64 lastRewardTime;
         uint256 bonesStaked;
         uint256 currentLockPeriod;
         Grounds ground;
@@ -181,7 +181,7 @@ library Lib {
         if (_job == Jobs.Mining) return _tokenId == 3;
     }
 
-    function pitsValidationCheck(IPits _pits) external view {
+    function pitsValidation(IPits _pits) external view {
         if (!_pits.validation()) revert DevelopmentGroundIsLocked();
     }
 

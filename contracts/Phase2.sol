@@ -57,18 +57,20 @@ contract Phase2 is Initializable {
         uint256 i;
         checkLength(_tokenId, _lockTime);
         if (_lockTime.length != _ground.length) revert Lib.LengthsNotEqual();
-        Lib.pitsValidationCheck(pits);
+        Lib.pitsValidation(pits);
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
-            Lib.DevelopmentGround storage token = developmentGround[tokenId];
+            Lib.DevelopmentGround storage devGround = developmentGround[
+                tokenId
+            ];
             Lib.enterDevelopmentGround(neandersmol, pits, tokenId, lockTime);
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
-            token.owner = msg.sender;
-            token.lockTime = uint128(block.timestamp);
-            token.lockPeriod = uint48(lockTime);
-            token.lastRewardTime = uint128(block.timestamp);
-            token.ground = _ground[i];
-            token.currentLockPeriod = pits.getTimeOut();
+            devGround.owner = msg.sender;
+            devGround.lockTime = uint64(block.timestamp);
+            devGround.lockPeriod = uint64(lockTime);
+            devGround.lastRewardTime = uint64(block.timestamp);
+            devGround.ground = _ground[i];
+            devGround.currentLockPeriod = pits.getTimeOut();
 
             emit EnterDevelopmentGround(
                 msg.sender,
@@ -87,7 +89,7 @@ contract Phase2 is Initializable {
         uint256[] calldata _amount,
         uint256[] calldata _tokenId
     ) external {
-        Lib.pitsValidationCheck(pits);
+        Lib.pitsValidation(pits);
         checkLength(_amount, _tokenId);
         uint256 i;
         for (; i < _amount.length; ) {
@@ -132,7 +134,7 @@ contract Phase2 is Initializable {
         uint256 bal;
         uint256 i = 1;
         uint256 amount;
-        uint48 count;
+        uint64 count;
         unchecked {
             for (; i <= devGround.amountPosition; ++i) {
                 (uint256 time, uint256 prev) = (
@@ -207,7 +209,7 @@ contract Phase2 is Initializable {
         if (devGround.owner != msg.sender) revert Lib.NotYourToken();
         uint256 reward = getDevelopmentGroundBonesReward(_tokenId);
         if (reward == 0) revert Lib.ZeroBalanceError();
-        developmentGround[_tokenId].lastRewardTime = uint128(block.timestamp);
+        developmentGround[_tokenId].lastRewardTime = uint64(block.timestamp);
         _stake
             ? stakeBonesInDevelopmentGround(_tokenId, reward)
             : bones.mint(msg.sender, reward);
