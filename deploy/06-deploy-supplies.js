@@ -9,12 +9,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
   let bonesAddress, treasureAddress, magicAddress;
 
+  const bones = await ethers.getContract("Token");
+  const treasure = await ethers.getContract("mERC1155");
+  const magic = await ethers.getContract("mERC20");
+
   if (chainId === 31337 || chainId === 421613) {
-    const bones = await ethers.getContract("Token");
     bonesAddress = bones.address;
-    const treasure = await ethers.getContract("mERC1155");
     treasureAddress = treasure.address;
-    const magic = await ethers.getContract("mERC20");
     magicAddress = magic.address;
   } else {
     bonesAddress = networkConfig[chainId].bones;

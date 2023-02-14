@@ -628,7 +628,7 @@ contract Phase2 is Initializable {
             claimCollectable(tokenId);
             Lib.LaborGround memory labor = laborGround[tokenId];
             delete laborGround[tokenId];
-            if (labor.animalId != 0) {
+            if (labor.animalId != 0)
                 animals.safeTransferFrom(
                     address(this),
                     msg.sender,
@@ -636,7 +636,7 @@ contract Phase2 is Initializable {
                     1,
                     ""
                 );
-            }
+
             if (labor.supplyId != 0)
                 supplies.safeTransferFrom(
                     address(this),
