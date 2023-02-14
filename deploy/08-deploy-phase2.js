@@ -7,6 +7,10 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const chainId = network.config.chainId;
 
   let neandersmolAddress, bonesAddress, animalsAddress, randomizerAddress;
+  const neandersmol = await ethers.getContract("mERC721");
+  const animals = await ethers.getContract("SmolAgeAnimals");
+  const randomizer = await ethers.getContract("Randomizer");
+  const bones = await ethers.getContract("Token");
   /**
    * smol - testnet and localhost
    * bones - testnet and localhost
@@ -14,19 +18,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
    * randomizer - localhost
    */
   if (chainId === 31337) {
-    const neandersmol = await ethers.getContract("mERC721");
     neandersmolAddress = neandersmol.address;
-    const bones = await ethers.getContract("Token");
     bonesAddress = bones.address;
-    const animals = await ethers.getContract("SmolAgeAnimals");
     animalsAddress = animals.address;
-    const randomizer = await ethers.getContract("Randomizer");
     randomizerAddress = randomizer.address;
   }
   if (chainId === 421613) {
-    const neandersmol = await ethers.getContract("mERC721");
     neandersmolAddress = neandersmol.address;
-    const bones = await ethers.getContract("Token");
     bonesAddress = bones.address;
   }
   if (chainId === 42161) {
