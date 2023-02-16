@@ -85,7 +85,7 @@ contract Pits is Initializable {
     }
 
     function validation() public view returns (bool) {
-        return bonesStaked >= (bones.totalSupply() * 3) / 10;
+        return bonesStaked >= minimumBonesRequired();
     }
 
     event StakeBonesInYard(address indexed owner, uint256 indexed amount);
