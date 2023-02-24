@@ -107,6 +107,10 @@ contract Supplies is ERC1155Upgradeable, Ownable {
         return "supplies";
     }
 
+    function withdraw() external onlyOwner {
+        SafeTransferLib.safeTransferAll(magic, msg.sender);
+    }
+
     function uri(
         uint256 _tokenId
     ) public view override returns (string memory) {
