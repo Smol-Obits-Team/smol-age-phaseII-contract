@@ -7,7 +7,6 @@ import { IBones } from "../interfaces/IBones.sol";
 import {
     DevelopmentGround,
     LaborGround,
-    Caves,
     Jobs,
     Grounds
 } from "./StructsEnums.sol";

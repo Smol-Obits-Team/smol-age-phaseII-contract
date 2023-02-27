@@ -21,7 +21,7 @@ struct LaborGround {
     Jobs job;
 }
 
-struct Caves {
+struct Cave {
     address owner;
     uint48 stakingTime;
     uint48 lastRewardTimestamp;

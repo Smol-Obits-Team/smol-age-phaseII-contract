@@ -41,18 +41,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const helperLibrary = await deploy("Lib", {
     from: deployer,
   });
-  const args = [
-    pits.address,
-    bonesAddress,
-    animalsAddress,
-    supplies.address,
-    consumables.address,
-    neandersmolAddress,
-    randomizerAddress,
-  ];
 
   try {
-    await deploy("DevelopmentGroundPhase2", {
+    await deploy("DevelopmentGrounds", {
       from: deployer,
       libraries: {
         Lib: helperLibrary.address,
@@ -63,13 +54,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         execute: {
           init: {
             methodName: "initialize",
-            args,
+            args: [pits.address, neandersmol.address, bones.address],
           },
         },
       },
       log: true,
     });
-    await deploy("CavesPhase2", {
+    await deploy("Caves", {
       from: deployer,
       libraries: {
         Lib: helperLibrary.address,
@@ -80,13 +71,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         execute: {
           init: {
             methodName: "initialize",
-            args,
+            args: [bones.address, pits.address, neandersmol.address],
           },
         },
       },
       log: true,
     });
-    await deploy("Phase2", {
+    await deploy("LaborGrounds", {
       from: deployer,
       libraries: {
         Lib: helperLibrary.address,
@@ -97,7 +88,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         execute: {
           init: {
             methodName: "initialize",
-            args,
+            args: [pits.address, animals.address, supplies.address, consumables.address, neandersmol.address, randomizer.address],
           },
         },
       },

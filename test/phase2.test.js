@@ -2,7 +2,9 @@ const { expect } = require("chai");
 const { ethers, deployments } = require("hardhat");
 
 describe("test phase two", () => {
-  let phaseII,
+  let devGrounds,
+    laborGrounds,
+    caves,
     owner,
     player,
     neandersmol,
@@ -40,7 +42,9 @@ describe("test phase two", () => {
     [owner, player] = await ethers.getSigners();
     await deployments.fixture(["all"]);
 
-    phaseII = await ethers.getContract("Phase2");
+    devGrounds = await ethers.getContract("DevelopmentGrounds");
+    laborGrounds = await ethers.getContract("LaborGrounds");
+    caves = await ethers.getContract("Caves");
     neandersmol = await ethers.getContract("mERC721");
     bones = await ethers.getContract("Token");
     pits = await ethers.getContract("Pits");
@@ -51,7 +55,9 @@ describe("test phase two", () => {
     magic = await ethers.getContract("mERC20");
     randomizer = await ethers.getContract("Randomizer");
 
-    neandersmol.setApprovalForAll(phaseII.address, true);
+    neandersmol.setApprovalForAll(devGrounds.address, true);
+    neandersmol.setApprovalForAll(caves.address, true);
+    neandersmol.setApprovalForAll(laborGrounds.address, true);
     const balance = await bones.balanceOf(owner.address);
     await neandersmol.setAuthorizedAddress(phaseII.address, true);
     await bones.approve(phaseII.address, balance);

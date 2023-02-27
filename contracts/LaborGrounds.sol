@@ -32,7 +32,7 @@ import {
     Grounds
 } from "./library/StructsEnums.sol";
 
-contract LaborGroundPhase2 is Initializable {
+contract LaborGrounds is Initializable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     IPits public pits;
     IRandomizer private randomizer;
@@ -75,6 +75,7 @@ contract LaborGroundPhase2 is Initializable {
         uint256[] calldata _supplyId,
         Jobs[] calldata _job
     ) external {
+        Lib.pitsValidation(pits);
         checkLength(_tokenId, _supplyId);
         if (_supplyId.length != _job.length) revert LengthsNotEqual();
         uint256 i;

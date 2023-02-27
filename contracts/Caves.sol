@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { Lib } from "./library/Lib.sol";
 import { IBones } from "./interfaces/IBones.sol";
-import { Caves } from "./library/StructsEnums.sol";
+import { Cave } from "./library/StructsEnums.sol";
 import { IPits } from "./interfaces/IPits.sol";
 
 import { INeandersmol } from "./interfaces/INeandersmol.sol";
@@ -21,21 +21,23 @@ import {
     EnumerableSetUpgradeable
 } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-contract CavesPhase2 is Initializable {
+contract Caves is Initializable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     IBones public bones;
     IPits public pits;
     INeandersmol public neandersmol;
 
-    mapping(uint256 => Caves) private caves;
+    mapping(uint256 => Cave) private caves;
 
     mapping(address => EnumerableSetUpgradeable.UintSet) private ownerToTokens;
 
     function initialize(
         address _bones,
+        address _pits,
         address _neandersmol
     ) external initializer {
         bones = IBones(_bones);
+        pits = IPits(_pits);
         neandersmol = INeandersmol(_neandersmol);
     }
 
@@ -45,10 +47,11 @@ contract CavesPhase2 is Initializable {
      */
 
     function enterCaves(uint256[] calldata _tokenId) external {
+        Lib.pitsValidation(pits);
         uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
-            Caves storage cave = caves[tokenId];
+            Cave storage cave = caves[tokenId];
             if (neandersmol.ownerOf(tokenId) != msg.sender)
                 revert NotYourToken();
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
@@ -72,7 +75,7 @@ contract CavesPhase2 is Initializable {
         uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
-            Caves memory cave = caves[tokenId];
+            Cave memory cave = caves[tokenId];
             if (cave.owner != msg.sender) revert NotYourToken();
             if (100 days + cave.stakingTime > block.timestamp)
                 revert NeandersmolsIsLocked();
@@ -122,7 +125,7 @@ contract CavesPhase2 is Initializable {
      */
 
     function getCavesReward(uint256 _tokenId) public view returns (uint256) {
-        Caves memory cave = caves[_tokenId];
+        Cave memory cave = caves[_tokenId];
         if (cave.lastRewardTimestamp == 0) return 0;
         return
             ((block.timestamp - cave.lastRewardTimestamp) / 1 days) *
@@ -139,7 +142,7 @@ contract CavesPhase2 is Initializable {
 
     function getCavesInfo(
         uint256 _tokenId
-    ) external view returns (Caves memory) {
+    ) external view returns (Cave memory) {
         return caves[_tokenId];
     }
 

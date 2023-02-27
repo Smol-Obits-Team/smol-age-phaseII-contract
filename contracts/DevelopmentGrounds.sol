@@ -12,6 +12,9 @@ import {
 } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import {
+    Initializable
+} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {
     DevelopmentGround,
     LaborGround,
     Jobs,
@@ -24,11 +27,21 @@ import {
     WrongMultiple
 } from "./library/Error.sol";
 
-contract DevelopmentGroundPhase2 {
+contract DevelopmentGrounds is Initializable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     IBones public bones;
     IPits public pits;
     INeandersmol public neandersmol;
+
+    function initialize(
+        address _pits,
+        address _neandersmol,
+        address _bones
+    ) external initializer {
+        bones = IBones(_bones);
+        pits = IPits(_pits);
+        neandersmol = INeandersmol(_neandersmol);
+    }
 
     // tokenId -> amount position -> staking time
     mapping(uint256 => mapping(uint256 => uint256)) private trackTime;
