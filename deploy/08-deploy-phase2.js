@@ -52,6 +52,40 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   ];
 
   try {
+    await deploy("DevelopmentGroundPhase2", {
+      from: deployer,
+      libraries: {
+        Lib: helperLibrary.address,
+      },
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args,
+          },
+        },
+      },
+      log: true,
+    });
+    await deploy("CavesPhase2", {
+      from: deployer,
+      libraries: {
+        Lib: helperLibrary.address,
+      },
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args,
+          },
+        },
+      },
+      log: true,
+    });
     await deploy("Phase2", {
       from: deployer,
       libraries: {

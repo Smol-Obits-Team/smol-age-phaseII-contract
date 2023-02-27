@@ -1,10 +1,16 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {Lib} from "./library/Lib.sol";
-import {Ownable} from "solady/src/auth/Ownable.sol";
-import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import { Lib } from "./library/Lib.sol";
+import { Ownable } from "solady/src/auth/Ownable.sol";
+
+import { NotAuthorized } from "./library/Error.sol";
+import {
+    StringsUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import {
+    ERC1155Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
 
 contract Consumables is ERC1155Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
@@ -30,7 +36,7 @@ contract Consumables is ERC1155Upgradeable, Ownable {
     }
 
     function mint(address _to, uint256 _tokenId, uint256 _amount) external {
-        if (!allowedTo[msg.sender]) revert Lib.NotAuthorized();
+        if (!allowedTo[msg.sender]) revert NotAuthorized();
         _mint(_to, _tokenId, _amount, "");
     }
 

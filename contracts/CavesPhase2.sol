@@ -1,21 +1,35 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {Lib} from "./library/Lib.sol";
-import {INeandersmol} from "./interfaces/INeandersmol.sol";
-import {IBones} from "./interfaces/IBones.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {EnumerableSetUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import { Lib } from "./library/Lib.sol";
+import { IBones } from "./interfaces/IBones.sol";
+import { Caves } from "./library/StructsEnums.sol";
+import { IPits } from "./interfaces/IPits.sol";
 
-contract Caves is Initializable {
+import { INeandersmol } from "./interfaces/INeandersmol.sol";
+
+import {
+    NotYourToken,
+    NeandersmolsIsLocked,
+    ZeroBalanceError
+} from "./library/Error.sol";
+
+import {
+    Initializable
+} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {
+    EnumerableSetUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+
+contract CavesPhase2 is Initializable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
-    INeandersmol neandersmol;
-    IBones bones;
+    IBones public bones;
+    IPits public pits;
+    INeandersmol public neandersmol;
 
-    mapping(uint256 => Lib.Caves) public caves;
+    mapping(uint256 => Caves) private caves;
 
-    mapping(address => mapping(uint256 => EnumerableSetUpgradeable.UintSet))
-        private ownerToTokens;
+    mapping(address => EnumerableSetUpgradeable.UintSet) private ownerToTokens;
 
     function initialize(
         address _bones,
@@ -34,14 +48,14 @@ contract Caves is Initializable {
         uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
-            Lib.Caves storage cave = caves[tokenId];
+            Caves storage cave = caves[tokenId];
             if (neandersmol.ownerOf(tokenId) != msg.sender)
-                revert Lib.NotYourToken();
+                revert NotYourToken();
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             cave.owner = msg.sender;
             cave.stakingTime = uint48(block.timestamp);
             cave.lastRewardTimestamp = uint48(block.timestamp);
-            ownerToTokens[msg.sender][2].add(tokenId);
+            ownerToTokens[msg.sender].add(tokenId);
             emit EnterCaves(msg.sender, tokenId, block.timestamp);
             unchecked {
                 ++i;
@@ -58,14 +72,15 @@ contract Caves is Initializable {
         uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 tokenId = _tokenId[i];
-            Lib.Caves memory cave = caves[tokenId];
-            if (cave.owner != msg.sender) revert Lib.NotYourToken();
+            Caves memory cave = caves[tokenId];
+            if (cave.owner != msg.sender) revert NotYourToken();
             if (100 days + cave.stakingTime > block.timestamp)
-                revert Lib.NeandersmolsIsLocked();
+                revert NeandersmolsIsLocked();
             if (getCavesReward(tokenId) != 0) claimCaveReward(tokenId);
-            ownerToTokens[msg.sender][0].remove(tokenId);
+            ownerToTokens[msg.sender].remove(tokenId);
             delete caves[tokenId];
             neandersmol.transferFrom(address(this), msg.sender, tokenId);
+            emit LeaveCave(msg.sender, tokenId);
             unchecked {
                 ++i;
             }
@@ -79,7 +94,7 @@ contract Caves is Initializable {
 
     function claimCaveReward(uint256 _tokenId) internal {
         uint256 reward = getCavesReward(_tokenId);
-        if (reward == 0) revert Lib.ZeroBalanceError();
+        if (reward == 0) revert ZeroBalanceError();
         caves[_tokenId].lastRewardTimestamp = uint48(block.timestamp);
         bones.mint(msg.sender, reward);
         emit ClaimCaveReward(msg.sender, _tokenId, reward);
@@ -107,7 +122,7 @@ contract Caves is Initializable {
      */
 
     function getCavesReward(uint256 _tokenId) public view returns (uint256) {
-        Lib.Caves memory cave = caves[_tokenId];
+        Caves memory cave = caves[_tokenId];
         if (cave.lastRewardTimestamp == 0) return 0;
         return
             ((block.timestamp - cave.lastRewardTimestamp) / 1 days) *
@@ -115,11 +130,32 @@ contract Caves is Initializable {
             10 ** 18;
     }
 
+    /**
+     * Retrieve information about a Cave token.
+     * @dev This function returns a Caves struct containing information about a Cave token, specified by its ID, _tokenId.
+     * @param _tokenId ID of the Cave token to retrieve information for
+     * @return  The Caves struct containing information about the specified Cave token.
+     */
+
+    function getCavesInfo(
+        uint256 _tokenId
+    ) external view returns (Caves memory) {
+        return caves[_tokenId];
+    }
+
+    function getStakedTokens(
+        address _owner
+    ) external view returns (uint256[] memory res) {
+        return ownerToTokens[_owner].values();
+    }
+
     event EnterCaves(
         address indexed owner,
         uint256 indexed tokenId,
         uint256 indexed stakeTime
     );
+
+    event LeaveCave(address indexed owner, uint256 indexed tokenId);
 
     event ClaimCaveReward(
         address indexed owner,

@@ -1,68 +1,31 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {IPits} from "../interfaces/IPits.sol";
-import {INeandersmol} from "../interfaces/INeandersmol.sol";
-import {IBones} from "../interfaces/IBones.sol";
+import { IPits } from "../interfaces/IPits.sol";
+import { INeandersmol } from "../interfaces/INeandersmol.sol";
+import { IBones } from "../interfaces/IBones.sol";
+import {
+    DevelopmentGround,
+    LaborGround,
+    Caves,
+    Jobs,
+    Grounds
+} from "./StructsEnums.sol";
+import {
+    CsIsBellowHundred,
+    NotYourToken,
+    InvalidLockTime,
+    CsToHigh,
+    InvalidTokenForThisJob,
+    DevelopmentGroundIsLocked,
+    NeandersmolsIsLocked,
+    BalanceIsInsufficient,
+    NeandersmolIsNotInDevelopmentGround,
+    WrongMultiple,
+    NoMoreAnimalsAllowed
+} from "./Error.sol";
 
 library Lib {
-    error CsToHigh();
-    error NotAContract();
-    error NotYourToken();
-    error NotAuthorized();
-    error WrongMultiple();
-    error CannotClaimNow();
-    error TransferFailed();
-    error InvalidTokenId();
-    error InvalidLockTime();
-    error NoMoreAnimalsAllowed();
-    error LengthsNotEqual();
-    error ZeroBalanceError();
-    error CsIsBellowHundred();
-    error NeandersmolsIsLocked();
-    error BalanceIsInsufficient();
-    error InvalidTokenForThisJob();
-    error DevelopmentGroundIsLocked();
-    error NeandersmolIsNotInDevelopmentGround();
-
-    struct DevelopmentGround {
-        address owner;
-        uint64 lockPeriod;
-        uint64 amountPosition;
-        uint64 entryTime;
-        uint64 lastRewardTime;
-        uint256 bonesStaked;
-        uint256 currentPitsLockPeriod;
-        Grounds ground;
-    }
-
-    struct LaborGround {
-        address owner;
-        uint32 lockTime;
-        uint32 supplyId;
-        uint32 animalId;
-        uint256 requestId;
-        Jobs job;
-    }
-
-    struct Caves {
-        address owner;
-        uint48 stakingTime;
-        uint48 lastRewardTimestamp;
-    }
-
-    enum Jobs {
-        Digging,
-        Foraging,
-        Mining
-    }
-
-    enum Grounds {
-        Chambers,
-        Garden,
-        Battlefield
-    }
-
     uint256 private constant MINIMUM_BONE_STAKE = 1000 * 10 ** 18;
 
     function getDevelopmentGroundBonesReward(
@@ -186,9 +149,8 @@ library Lib {
     function leaveDevelopmentGround(
         DevelopmentGround storage _devGround
     ) external view {
-        DevelopmentGround memory devGround = _devGround;
-        if (devGround.owner != msg.sender) revert NotYourToken();
-        if (block.timestamp < devGround.entryTime + devGround.lockPeriod)
+        if (_devGround.owner != msg.sender) revert NotYourToken();
+        if (block.timestamp < _devGround.entryTime + _devGround.lockPeriod)
             revert NeandersmolsIsLocked();
     }
 
@@ -216,6 +178,6 @@ library Lib {
         uint256 _animalsId
     ) external view {
         if (_labor.owner != msg.sender && _labor.animalId != _animalsId + 1)
-            revert Lib.NotYourToken();
+            revert NotYourToken();
     }
 }
