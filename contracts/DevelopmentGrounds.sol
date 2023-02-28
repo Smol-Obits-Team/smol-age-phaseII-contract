@@ -7,9 +7,6 @@ import { IBones } from "./interfaces/IBones.sol";
 import { IRandomizer } from "./interfaces/IRandomizer.sol";
 import { INeandersmol } from "./interfaces/INeandersmol.sol";
 import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
-import {
-    EnumerableSetUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import {
     Initializable
@@ -24,11 +21,15 @@ import {
     LengthsNotEqual,
     ZeroBalanceError,
     NotYourToken,
-    WrongMultiple
+    WrongMultiple,
+    CsIsBellowHundred,
+    BalanceIsInsufficient,
+    InvalidLockTime,
+    NeandersmolIsNotInDevelopmentGround,
+    NeandersmolsIsLocked
 } from "./library/Error.sol";
 
 contract DevelopmentGrounds is Initializable {
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     IBones public bones;
     IPits public pits;
     INeandersmol public neandersmol;
@@ -48,7 +49,7 @@ contract DevelopmentGrounds is Initializable {
     // tokenId -> time -> amount
     mapping(uint256 => mapping(uint256 => uint256)) private trackToken;
 
-    mapping(address => EnumerableSetUpgradeable.UintSet) private ownerToTokens;
+    mapping(address => uint256[]) private ownerToTokens;
 
     mapping(uint256 => DevelopmentGround) private developmentGround;
 
@@ -74,7 +75,11 @@ contract DevelopmentGrounds is Initializable {
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             DevelopmentGround storage devGround = developmentGround[tokenId];
-            Lib.enterDevelopmentGround(neandersmol, tokenId, lockTime);
+            if (neandersmol.getCommonSense(tokenId) < 100)
+                revert CsIsBellowHundred();
+            if (neandersmol.ownerOf(tokenId) != msg.sender)
+                revert NotYourToken();
+            if (!lockTimeExists(lockTime)) revert InvalidLockTime();
             neandersmol.transferFrom(msg.sender, address(this), tokenId);
             devGround.owner = msg.sender;
             devGround.entryTime = uint64(block.timestamp);
@@ -82,7 +87,7 @@ contract DevelopmentGrounds is Initializable {
             devGround.lastRewardTime = uint64(block.timestamp);
             devGround.ground = _ground[i];
             devGround.currentPitsLockPeriod = pits.getTimeOut();
-            ownerToTokens[msg.sender].add(tokenId);
+            ownerToTokens[msg.sender].push(tokenId);
             emit EnterDevelopmentGround(
                 msg.sender,
                 tokenId,
@@ -113,7 +118,11 @@ contract DevelopmentGrounds is Initializable {
         for (; i < _amount.length; ) {
             (uint256 tokenId, uint256 amount) = (_tokenId[i], _amount[i]);
             DevelopmentGround storage devGround = developmentGround[tokenId];
-            Lib.stakeBonesInDevelopmentGround(devGround, bones, amount);
+            if (bones.balanceOf(msg.sender) < amount)
+                revert BalanceIsInsufficient();
+            if (devGround.owner != msg.sender)
+                revert NeandersmolIsNotInDevelopmentGround();
+            if (amount % MINIMUM_BONE_STAKE != 0) revert WrongMultiple();
             SafeTransferLib.safeTransferFrom(
                 address(bones),
                 msg.sender,
@@ -341,12 +350,14 @@ contract DevelopmentGrounds is Initializable {
      */
 
     function leaveDevelopmentGround(uint256 _tokenId) internal {
-        DevelopmentGround storage devGround = developmentGround[_tokenId];
-        Lib.leaveDevelopmentGround(devGround);
+        DevelopmentGround memory devGround = developmentGround[_tokenId];
+        if (devGround.owner != msg.sender) revert NotYourToken();
+        if (block.timestamp < devGround.entryTime + devGround.lockPeriod)
+            revert NeandersmolsIsLocked();
         if (getDevelopmentGroundBonesReward(_tokenId) > 0)
             claimDevelopmentGroundBonesReward(_tokenId, false);
         if (devGround.bonesStaked > 0) removeBones(_tokenId, true);
-        ownerToTokens[msg.sender].remove(_tokenId);
+        Lib.removeItem(ownerToTokens[msg.sender], (_tokenId));
         delete developmentGround[_tokenId];
         neandersmol.transferFrom(address(this), msg.sender, _tokenId);
         emit LeaveDevelopmentGround(msg.sender, _tokenId);
@@ -386,6 +397,13 @@ contract DevelopmentGrounds is Initializable {
         if (_tokenId.length != _animalsId.length) revert LengthsNotEqual();
     }
 
+    function lockTimeExists(uint256 _lockTime) internal pure returns (bool) {
+        return
+            _lockTime == 50 days ||
+            _lockTime == 100 days ||
+            _lockTime == 150 days;
+    }
+
     /**
      * Retrieve information about a Development Ground token.
      * @dev This function returns a DevelopmentGround struct containing information about a Development Ground token, specified by its ID, _tokenId.
@@ -402,7 +420,7 @@ contract DevelopmentGrounds is Initializable {
     function getStakedTokens(
         address _owner
     ) external view returns (uint256[] memory res) {
-        return ownerToTokens[_owner].values();
+        return ownerToTokens[_owner];
     }
 
     event EnterDevelopmentGround(

@@ -13,16 +13,14 @@ import {
 import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {
-    EnumerableSetUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import {
     LengthsNotEqual,
-    ZeroBalanceError,
     NotYourToken,
-    WrongMultiple,
-    CannotClaimNow
+    CannotClaimNow,
+    InvalidTokenForThisJob,
+    CsToHigh,
+    NoMoreAnimalsAllowed
 } from "./library/Error.sol";
 
 import {
@@ -33,7 +31,6 @@ import {
 } from "./library/StructsEnums.sol";
 
 contract LaborGrounds is Initializable {
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     IPits public pits;
     IRandomizer public randomizer;
     IConsumables public consumables;
@@ -43,7 +40,7 @@ contract LaborGrounds is Initializable {
 
     mapping(uint256 => LaborGround) private laborGround;
 
-    mapping(address => EnumerableSetUpgradeable.UintSet) private ownerToTokens;
+    mapping(address => uint256[]) private ownerToTokens;
 
     function initialize(
         address _pits,
@@ -82,7 +79,11 @@ contract LaborGrounds is Initializable {
         for (; i < _tokenId.length; ) {
             (uint256 tokenId, uint256 supplyId) = (_tokenId[i], _supplyId[i]);
             LaborGround storage labor = laborGround[tokenId];
-            Lib.enterLaborGround(neandersmol, tokenId, supplyId, _job[i]);
+            if (neandersmol.ownerOf(tokenId) != msg.sender)
+                revert NotYourToken();
+            if (neandersmol.getCommonSense(tokenId) > 99) revert CsToHigh();
+            if (!validateTokenId(supplyId, _job[i]))
+                revert InvalidTokenForThisJob();
             supplies.safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -96,7 +97,7 @@ contract LaborGrounds is Initializable {
             labor.supplyId = uint32(supplyId);
             labor.job = _job[i];
             labor.requestId = randomizer.requestRandomNumber();
-            ownerToTokens[msg.sender].add(tokenId);
+            ownerToTokens[msg.sender].push(tokenId);
             emit EnterLaborGround(msg.sender, tokenId, supplyId, _job[i]);
 
             unchecked {
@@ -119,8 +120,9 @@ contract LaborGrounds is Initializable {
         uint256 i;
         for (; i < _tokenId.length; ) {
             uint256 animalsId = _animalsId[i];
-            LaborGround storage labor = laborGround[_tokenId[i]];
-            Lib.bringInAnimalsToLaborGround(labor);
+            LaborGround memory labor = laborGround[_tokenId[i]];
+            if (labor.owner != msg.sender) revert NotYourToken();
+            if (labor.animalId != 0) revert NoMoreAnimalsAllowed();
             animals.safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -129,7 +131,7 @@ contract LaborGrounds is Initializable {
                 ""
             );
             unchecked {
-                labor.animalId = uint32(animalsId) + 1; // added one since animals token id starts from 0
+                laborGround[_tokenId[i]].animalId = uint32(animalsId) + 1; // added one since animals token id starts from 0
             }
 
             emit BringInAnimalsToLaborGround(
@@ -158,7 +160,8 @@ contract LaborGrounds is Initializable {
         for (; i < _tokenId.length; ) {
             uint256 animalsId = _animalsId[i];
             LaborGround storage labor = laborGround[_tokenId[i]];
-            Lib.removeAnimalsFromLaborGround(labor, animalsId);
+            if (labor.owner != msg.sender && labor.animalId != animalsId + 1)
+                revert NotYourToken();
 
             animals.safeTransferFrom(
                 address(this),
@@ -253,7 +256,7 @@ contract LaborGrounds is Initializable {
             claimCollectable(tokenId);
             LaborGround memory labor = laborGround[tokenId];
             delete laborGround[tokenId];
-            ownerToTokens[msg.sender].remove(tokenId);
+            Lib.removeItem(ownerToTokens[msg.sender], tokenId);
             if (labor.animalId != 0)
                 animals.safeTransferFrom(
                     address(this),
@@ -393,6 +396,15 @@ contract LaborGrounds is Initializable {
         return this.onERC1155Received.selector;
     }
 
+    function validateTokenId(
+        uint256 _tokenId,
+        Jobs _job
+    ) internal pure returns (bool res) {
+        if (_job == Jobs.Digging) return _tokenId == 1;
+        if (_job == Jobs.Foraging) return _tokenId == 2;
+        if (_job == Jobs.Mining) return _tokenId == 3;
+    }
+
     /**
      * Retrieve information about a Labor Ground token.
      * @dev This function returns a LaborGround struct containing information about a Labor Ground token, specified by its ID, _tokenId.
@@ -409,7 +421,7 @@ contract LaborGrounds is Initializable {
     function getStakedTokens(
         address _owner
     ) external view returns (uint256[] memory res) {
-        return ownerToTokens[_owner].values();
+        return ownerToTokens[_owner];
     }
 
     event ClaimCollectable(address indexed owner, uint256 indexed tokenId);

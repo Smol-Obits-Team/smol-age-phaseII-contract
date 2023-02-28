@@ -17,20 +17,15 @@ import {
 import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {
-    EnumerableSetUpgradeable
-} from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 contract Caves is Initializable {
-    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
-
     IPits public pits;
     IBones public bones;
     INeandersmol public neandersmol;
 
     mapping(uint256 => Cave) private caves;
 
-    mapping(address => EnumerableSetUpgradeable.UintSet) private ownerToTokens;
+    mapping(address => uint256[]) private ownerToTokens;
 
     function initialize(
         address _pits,
@@ -59,7 +54,7 @@ contract Caves is Initializable {
             cave.owner = msg.sender;
             cave.stakingTime = uint48(block.timestamp);
             cave.lastRewardTimestamp = uint48(block.timestamp);
-            ownerToTokens[msg.sender].add(tokenId);
+            ownerToTokens[msg.sender].push(tokenId);
             emit EnterCaves(msg.sender, tokenId, block.timestamp);
             unchecked {
                 ++i;
@@ -81,7 +76,7 @@ contract Caves is Initializable {
             if (100 days + cave.stakingTime > block.timestamp)
                 revert NeandersmolsIsLocked();
             if (getCavesReward(tokenId) != 0) claimCaveReward(tokenId);
-            ownerToTokens[msg.sender].remove(tokenId);
+            Lib.removeItem(ownerToTokens[msg.sender], tokenId);
             delete caves[tokenId];
             neandersmol.transferFrom(address(this), msg.sender, tokenId);
             emit LeaveCave(msg.sender, tokenId);
@@ -150,7 +145,7 @@ contract Caves is Initializable {
     function getStakedTokens(
         address _owner
     ) external view returns (uint256[] memory res) {
-        return ownerToTokens[_owner].values();
+        return ownerToTokens[_owner];
     }
 
     event EnterCaves(
