@@ -22,7 +22,7 @@ import {
 contract Supplies is ERC1155Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
 
-    address public phase2Address;
+    address public laborGround;
     address public treasure;
     address public bones;
     address public magic;
@@ -56,8 +56,8 @@ contract Supplies is ERC1155Upgradeable, Ownable {
         baseUri = _baseUri;
     }
 
-    function setPhase2Addresss(address _phase2Address) external onlyOwner {
-        phase2Address = _phase2Address;
+    function setLaborGroundAddresss(address _laborGround) external onlyOwner {
+        laborGround = _laborGround;
     }
 
     /**
@@ -105,7 +105,7 @@ contract Supplies is ERC1155Upgradeable, Ownable {
         address operator,
         bool approved
     ) public virtual override {
-        if (operator != phase2Address) revert NotAuthorized();
+        if (operator != laborGround) revert NotAuthorized();
         super.setApprovalForAll(operator, approved);
     }
 

@@ -71,7 +71,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         execute: {
           init: {
             methodName: "initialize",
-            args: [bones.address, pits.address, neandersmol.address],
+            args: [pits.address, bones.address, neandersmol.address],
           },
         },
       },

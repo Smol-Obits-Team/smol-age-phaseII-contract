@@ -35,7 +35,7 @@ import {
 contract LaborGrounds is Initializable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
     IPits public pits;
-    IRandomizer private randomizer;
+    IRandomizer public randomizer;
     IConsumables public consumables;
     INeandersmol public neandersmol;
     IERC1155Upgradeable public animals;

@@ -23,8 +23,9 @@ import {
 
 contract Caves is Initializable {
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.UintSet;
-    IBones public bones;
+
     IPits public pits;
+    IBones public bones;
     INeandersmol public neandersmol;
 
     mapping(uint256 => Cave) private caves;
@@ -32,8 +33,8 @@ contract Caves is Initializable {
     mapping(address => EnumerableSetUpgradeable.UintSet) private ownerToTokens;
 
     function initialize(
-        address _bones,
         address _pits,
+        address _bones,
         address _neandersmol
     ) external initializer {
         bones = IBones(_bones);
