@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { Lib } from "./library/Lib.sol";
 import { IBones } from "./interfaces/IBones.sol";
-import { Cave } from "./library/StructsEnums.sol";
+import { Cave, UserInfo } from "./library/StructsEnums.sol";
 import { IPits } from "./interfaces/IPits.sol";
 
 import { INeandersmol } from "./interfaces/INeandersmol.sol";
@@ -136,17 +136,39 @@ contract Caves is Initializable {
      * @return  The Caves struct containing information about the specified Cave token.
      */
 
-    function getCavesInfo(
-        uint256 _tokenId
-    ) external view returns (Cave memory) {
+    function getCavesInfo(uint256 _tokenId) public view returns (Cave memory) {
         return caves[_tokenId];
     }
 
     function getStakedTokens(
         address _owner
-    ) external view returns (uint256[] memory res) {
+    ) public view returns (uint256[] memory res) {
         return ownerToTokens[_owner];
     }
+
+    function getUserInfo(
+        address _user
+    ) external view returns (UserInfo[] memory) {
+        uint256[] memory tokenIds = getStakedTokens(_user);
+        UserInfo[] memory userInfo = new UserInfo[](tokenIds.length);
+        for (uint256 i; i < tokenIds.length; ++i) {
+            uint256 timeLeft = 100 days +
+                getCavesInfo(tokenIds[i]).stakingTime -
+                block.timestamp;
+            userInfo[i] = UserInfo(
+                getCavesReward(tokenIds[i]),
+                uint128(tokenIds[i]),
+                uint128(timeLeft)
+            );
+        }
+
+        return userInfo;
+    }
+
+    /**
+     * start---------------current-time----------opener
+     * timeLeft opener - currentTime
+     */
 
     event EnterCaves(
         address indexed owner,

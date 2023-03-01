@@ -26,6 +26,13 @@ struct Cave {
     uint48 stakingTime;
     uint48 lastRewardTimestamp;
 }
+
+struct UserInfo {
+    uint256 reward;
+    uint128 stakedSmols;
+    uint128 timeLeft;
+}
+
 enum Jobs {
     Digging,
     Foraging,
