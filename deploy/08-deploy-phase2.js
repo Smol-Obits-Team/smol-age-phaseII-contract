@@ -47,45 +47,37 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   });
 
   try {
-    // await deploy("DevelopmentGrounds", {
-    //   from: deployer,
-    //   libraries: {
-    //     Lib: helperLibrary.address,
-    //   },
-    //   proxy: {
-    //     owner: deployer,
-    //     proxyContract: "OpenZeppelinTransparentProxy",
-    //     execute: {
-    //       init: {
-    //         methodName: "initialize",
-    //         args: [pits.address, neandersmolAddress, bonesAddress],
-    //       },
-    //     },
-    //   },
-    //   log: true,
-    // });
-    // await deploy("Caves", {
-    //   from: deployer,
-    //   libraries: {
-    //     Lib: helperLibrary.address,
-    //   },
-    //   proxy: {
-    //     owner: deployer,
-    //     proxyContract: "OpenZeppelinTransparentProxy",
-    //     execute: {
-    //       init: {
-    //         methodName: "initialize",
-    //         args: [pits.address, bonesAddress, neandersmolAddress],
-    //       },
-    //     },
-    //   },
-    //   log: true,
-    // });
+    const dg = await deploy("DevelopmentGrounds", {
+      from: deployer,
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [pits.address, neandersmolAddress, bonesAddress],
+          },
+        },
+      },
+      log: true,
+    });
+    await deploy("Caves", {
+      from: deployer,
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [pits.address, bonesAddress, neandersmolAddress],
+          },
+        },
+      },
+      log: true,
+    });
     await deploy("LaborGrounds", {
       from: deployer,
-      libraries: {
-        Lib: helperLibrary.address,
-      },
+
       proxy: {
         owner: deployer,
         proxyContract: "OpenZeppelinTransparentProxy",

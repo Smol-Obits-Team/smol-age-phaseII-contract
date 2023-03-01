@@ -77,7 +77,7 @@ describe("test phase two", () => {
     await treasure.setApprovalForAll(supplies.address, true);
   });
 
-  it("initializers checks", async () => {
+  it("initializer checks", async () => {
     await expect(
       devGrounds.initialize(
         pits.address, neandersmol.address, bones.address
@@ -426,7 +426,7 @@ describe("test phase two", () => {
     await supplies.mint([3], [1], [0]);
     await laborGrounds.enterLaborGround([2], [3], [2]);
     await laborGrounds.bringInAnimalsToLaborGround([2], [0]);
-    expect((await laborGrounds.getLaborGroundInfo(2)).animalId).to.equal(1);
+    expect((await laborGrounds.getLaborGroundInfo(2)).animalId).to.equal(0);
   });
   it("remove animals from labor ground", async () => {
     await stakeInPit()

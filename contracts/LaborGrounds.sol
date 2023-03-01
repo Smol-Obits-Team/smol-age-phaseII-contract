@@ -409,13 +409,19 @@ contract LaborGrounds is Initializable {
      * Retrieve information about a Labor Ground token.
      * @dev This function returns a LaborGround struct containing information about a Labor Ground token, specified by its ID, _tokenId.
      * @param _tokenId ID of the Labor Ground token to retrieve information for
-     * @return The LaborGround struct containing information about the specified Labor Ground token.
+     * @return lg The LaborGround struct containing information about the specified Labor Ground token.
      */
 
     function getLaborGroundInfo(
         uint256 _tokenId
-    ) external view returns (LaborGround memory) {
-        return laborGround[_tokenId];
+    ) external view returns (LaborGround memory lg) {
+        lg = laborGround[_tokenId];
+        if (lg.animalId == 0) {
+            return laborGround[_tokenId];
+        } else {
+            lg.animalId -= 1;
+            return lg;
+        }
     }
 
     function getStakedTokens(

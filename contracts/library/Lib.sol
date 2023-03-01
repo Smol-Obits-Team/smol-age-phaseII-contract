@@ -10,7 +10,7 @@ library Lib {
         uint256 _lockPeriod,
         uint256 _lastRewardTime,
         IPits _pits
-    ) external view returns (uint256) {
+    ) internal view returns (uint256) {
         if (_lockPeriod == 0) return 0;
         uint256 rewardRate = getRewardRate(_lockPeriod);
 
@@ -30,7 +30,7 @@ library Lib {
         IPits _pits,
         mapping(uint256 => mapping(uint256 => uint256)) storage trackTime,
         mapping(uint256 => mapping(uint256 => uint256)) storage trackToken
-    ) external view returns (uint256) {
+    ) internal view returns (uint256) {
         if (_bonesStaked == 0) return 0;
         uint256 amount;
         for (uint256 i = 1; i <= _amountPosition; ) {
@@ -80,7 +80,7 @@ library Lib {
         if (_lockTime == 150 days) rewardRate = 100;
     }
 
-    function pitsValidation(IPits _pits) external view {
+    function pitsValidation(IPits _pits) internal view {
         if (!_pits.validation()) revert DevelopmentGroundIsLocked();
     }
 
