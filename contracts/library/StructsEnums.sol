@@ -27,11 +27,26 @@ struct Cave {
     uint48 lastRewardTimestamp;
 }
 
-struct UserInfo {
+struct CavesFeInfo {
     uint256 reward;
     uint128 stakedSmols;
     uint128 timeLeft;
 }
+
+struct DevGroundFe {
+    uint96 timeLeft;
+    uint96 daysStaked;
+    uint64 stakedSmols;
+    uint256 skillLevel;
+    uint256 bonesOccured;
+}
+
+/**
+ * token id
+ * bones occured
+ * primary skill level
+ * days left
+ */
 
 enum Jobs {
     Digging,

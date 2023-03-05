@@ -76,7 +76,7 @@ contract LaborGrounds is Initializable {
         checkLength(_tokenId, _supplyId);
         if (_supplyId.length != _job.length) revert LengthsNotEqual();
         uint256 i;
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             (uint256 tokenId, uint256 supplyId) = (_tokenId[i], _supplyId[i]);
             LaborGround storage labor = laborGround[tokenId];
             if (neandersmol.ownerOf(tokenId) != msg.sender)
@@ -99,10 +99,6 @@ contract LaborGrounds is Initializable {
             labor.requestId = randomizer.requestRandomNumber();
             ownerToTokens[msg.sender].push(tokenId);
             emit EnterLaborGround(msg.sender, tokenId, supplyId, _job[i]);
-
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -118,7 +114,7 @@ contract LaborGrounds is Initializable {
     ) external {
         checkLength(_tokenId, _animalsId);
         uint256 i;
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             uint256 animalsId = _animalsId[i];
             LaborGround memory labor = laborGround[_tokenId[i]];
             if (labor.owner != msg.sender) revert NotYourToken();
@@ -130,18 +126,13 @@ contract LaborGrounds is Initializable {
                 1,
                 ""
             );
-            unchecked {
-                laborGround[_tokenId[i]].animalId = uint32(animalsId) + 1; // added one since animals token id starts from 0
-            }
+            laborGround[_tokenId[i]].animalId = uint32(animalsId) + 1; // added one since animals token id starts from 0
 
             emit BringInAnimalsToLaborGround(
                 msg.sender,
                 _tokenId[i],
                 animalsId
             );
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -157,7 +148,7 @@ contract LaborGrounds is Initializable {
     ) external {
         checkLength(_tokenId, _animalsId);
         uint256 i;
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             uint256 animalsId = _animalsId[i];
             LaborGround storage labor = laborGround[_tokenId[i]];
             if (labor.owner != msg.sender && labor.animalId != animalsId + 1)
@@ -176,9 +167,6 @@ contract LaborGrounds is Initializable {
                 _tokenId[i],
                 animalsId
             );
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -207,12 +195,7 @@ contract LaborGrounds is Initializable {
 */
     function claimCollectables(uint256[] calldata _tokenId) external {
         uint256 i;
-        for (; i < _tokenId.length; ) {
-            claimCollectable(_tokenId[i]);
-            unchecked {
-                ++i;
-            }
-        }
+        for (; i < _tokenId.length; ++i) claimCollectable(_tokenId[i]);
     }
 
     /**
@@ -251,7 +234,7 @@ contract LaborGrounds is Initializable {
     function leaveLaborGround(uint256[] calldata _tokenId) external {
         uint256 i;
 
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             uint256 tokenId = _tokenId[i];
             claimCollectable(tokenId);
             LaborGround memory labor = laborGround[tokenId];
@@ -276,9 +259,6 @@ contract LaborGrounds is Initializable {
                 );
             neandersmol.transferFrom(address(this), msg.sender, tokenId);
             emit LeaveLaborGround(msg.sender, tokenId);
-            unchecked {
-                ++i;
-            }
         }
     }
 

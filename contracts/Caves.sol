@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import { Lib } from "./library/Lib.sol";
 import { IBones } from "./interfaces/IBones.sol";
-import { Cave, UserInfo } from "./library/StructsEnums.sol";
+import { Cave, CavesFeInfo } from "./library/StructsEnums.sol";
 import { IPits } from "./interfaces/IPits.sol";
 
 import { INeandersmol } from "./interfaces/INeandersmol.sol";
@@ -45,7 +45,7 @@ contract Caves is Initializable {
     function enterCaves(uint256[] calldata _tokenId) external {
         Lib.pitsValidation(pits);
         uint256 i;
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             uint256 tokenId = _tokenId[i];
             Cave storage cave = caves[tokenId];
             if (neandersmol.ownerOf(tokenId) != msg.sender)
@@ -56,9 +56,6 @@ contract Caves is Initializable {
             cave.lastRewardTimestamp = uint48(block.timestamp);
             ownerToTokens[msg.sender].push(tokenId);
             emit EnterCaves(msg.sender, tokenId, block.timestamp);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -69,7 +66,7 @@ contract Caves is Initializable {
 
     function leaveCave(uint256[] calldata _tokenId) external {
         uint256 i;
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             uint256 tokenId = _tokenId[i];
             Cave memory cave = caves[tokenId];
             if (cave.owner != msg.sender) revert NotYourToken();
@@ -80,9 +77,6 @@ contract Caves is Initializable {
             delete caves[tokenId];
             neandersmol.transferFrom(address(this), msg.sender, tokenId);
             emit LeaveCave(msg.sender, tokenId);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -106,12 +100,7 @@ contract Caves is Initializable {
 
     function claimCaveReward(uint256[] calldata _tokenId) external {
         uint256 i;
-        for (; i < _tokenId.length; ) {
-            claimCaveReward(_tokenId[i]);
-            unchecked {
-                ++i;
-            }
-        }
+        for (; i < _tokenId.length; ++i) claimCaveReward(_tokenId[i]);
     }
 
     /**
@@ -146,16 +135,15 @@ contract Caves is Initializable {
         return ownerToTokens[_owner];
     }
 
-    function getUserInfo(
+    function getCavesFeInfo(
         address _user
-    ) external view returns (UserInfo[] memory) {
+    ) external view returns (CavesFeInfo[] memory) {
         uint256[] memory tokenIds = getStakedTokens(_user);
-        UserInfo[] memory userInfo = new UserInfo[](tokenIds.length);
+        CavesFeInfo[] memory userInfo = new CavesFeInfo[](tokenIds.length);
         for (uint256 i; i < tokenIds.length; ++i) {
-            uint256 timeLeft = 100 days +
-                getCavesInfo(tokenIds[i]).stakingTime -
-                block.timestamp;
-            userInfo[i] = UserInfo(
+            uint256 timeLeft = (100 days +
+                getCavesInfo(tokenIds[i]).stakingTime) - block.timestamp;
+            userInfo[i] = CavesFeInfo(
                 getCavesReward(tokenIds[i]),
                 uint128(tokenIds[i]),
                 uint128(timeLeft)

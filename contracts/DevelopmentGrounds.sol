@@ -15,7 +15,8 @@ import {
     DevelopmentGround,
     LaborGround,
     Jobs,
-    Grounds
+    Grounds,
+    DevGroundFe
 } from "./library/StructsEnums.sol";
 import {
     LengthsNotEqual,
@@ -72,7 +73,7 @@ contract DevelopmentGrounds is Initializable {
         checkLength(_tokenId, _lockTime);
         if (_lockTime.length != _ground.length) revert LengthsNotEqual();
         Lib.pitsValidation(pits);
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             DevelopmentGround storage devGround = developmentGround[tokenId];
             if (neandersmol.getCommonSense(tokenId) < 100)
@@ -95,9 +96,6 @@ contract DevelopmentGrounds is Initializable {
                 block.timestamp,
                 _ground[i]
             );
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -115,7 +113,7 @@ contract DevelopmentGrounds is Initializable {
         Lib.pitsValidation(pits);
         checkLength(_amount, _tokenId);
         uint256 i;
-        for (; i < _amount.length; ) {
+        for (; i < _amount.length; ++i) {
             (uint256 tokenId, uint256 amount) = (_tokenId[i], _amount[i]);
             DevelopmentGround storage devGround = developmentGround[tokenId];
             if (bones.balanceOf(msg.sender) < amount)
@@ -131,9 +129,6 @@ contract DevelopmentGrounds is Initializable {
             );
             updateDevelopmentGround(devGround, tokenId, amount);
             emit StakeBonesInDevelopmentGround(msg.sender, amount, tokenId);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -149,12 +144,9 @@ contract DevelopmentGrounds is Initializable {
     ) external {
         if (_tokenId.length != _all.length) revert LengthsNotEqual();
         uint256 i;
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             developPrimarySkill(_tokenId[i]);
             removeBones(_tokenId[i], _all[i]);
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -170,31 +162,31 @@ contract DevelopmentGrounds is Initializable {
         uint256 i = 1;
         uint256 amount;
         uint64 count;
-        unchecked {
-            for (; i <= devGround.amountPosition; ++i) {
-                (uint256 time, uint256 prev) = (
-                    trackTime[_tokenId][i],
-                    trackTime[_tokenId][i + 1]
-                );
-                if (block.timestamp < time + 30 days && !_all) continue;
 
-                block.timestamp < time + 30 days && _all
-                    ? amount += trackToken[_tokenId][time] / 2
-                    : amount += trackToken[_tokenId][time];
+        for (; i <= devGround.amountPosition; ++i) {
+            (uint256 time, uint256 prev) = (
+                trackTime[_tokenId][i],
+                trackTime[_tokenId][i + 1]
+            );
+            if (block.timestamp < time + 30 days && !_all) continue;
 
-                _all || devGround.amountPosition == 1
-                    ? trackTime[_tokenId][i] = 0
-                    : trackTime[_tokenId][i] = prev;
-                trackToken[_tokenId][time] = 0;
+            block.timestamp < time + 30 days && _all
+                ? amount += trackToken[_tokenId][time] / 2
+                : amount += trackToken[_tokenId][time];
 
-                ++count;
-            }
+            _all || devGround.amountPosition == 1
+                ? trackTime[_tokenId][i] = 0
+                : trackTime[_tokenId][i] = prev;
+            trackToken[_tokenId][time] = 0;
 
-            developmentGround[_tokenId].amountPosition -= count;
-            developmentGround[_tokenId].bonesStaked -= amount;
-
-            bal = devGround.bonesStaked - amount;
+            ++count;
         }
+
+        developmentGround[_tokenId].amountPosition -= count;
+        developmentGround[_tokenId].bonesStaked -= amount;
+
+        bal = devGround.bonesStaked - amount;
+
         if (bal != 0 && _all)
             SafeTransferLib.safeTransfer(address(bones), address(1), bal);
 
@@ -280,12 +272,8 @@ contract DevelopmentGrounds is Initializable {
     ) external {
         if (_tokenId.length != _stake.length) revert LengthsNotEqual();
         uint256 i;
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i)
             claimDevelopmentGroundBonesReward(_tokenId[i], _stake[i]);
-            unchecked {
-                ++i;
-            }
-        }
     }
 
     /**
@@ -336,12 +324,7 @@ contract DevelopmentGrounds is Initializable {
 
     function leaveDevelopmentGround(uint256[] calldata _tokenId) external {
         uint256 i;
-        for (; i < _tokenId.length; ) {
-            leaveDevelopmentGround(_tokenId[i]);
-            unchecked {
-                ++i;
-            }
-        }
+        for (; i < _tokenId.length; ++i) leaveDevelopmentGround(_tokenId[i]);
     }
 
     /**
@@ -375,12 +358,10 @@ contract DevelopmentGrounds is Initializable {
         uint256 _tokenId,
         uint256 _amount
     ) internal {
-        unchecked {
-            _devGround.bonesStaked += _amount;
-            ++_devGround.amountPosition;
-            trackToken[_tokenId][block.timestamp] = _amount;
-            trackTime[_tokenId][_devGround.amountPosition] = block.timestamp;
-        }
+        _devGround.bonesStaked += _amount;
+        ++_devGround.amountPosition;
+        trackToken[_tokenId][block.timestamp] = _amount;
+        trackTime[_tokenId][_devGround.amountPosition] = block.timestamp;
     }
 
     /**
@@ -413,7 +394,7 @@ contract DevelopmentGrounds is Initializable {
 
     function getDevelopmentGroundInfo(
         uint256 _tokenId
-    ) external view returns (DevelopmentGround memory) {
+    ) public view returns (DevelopmentGround memory) {
         return developmentGround[_tokenId];
     }
 
@@ -421,6 +402,34 @@ contract DevelopmentGrounds is Initializable {
         address _owner
     ) external view returns (uint256[] memory res) {
         return ownerToTokens[_owner];
+    }
+
+    function getDevGroundFeInfo(
+        address _owner
+    ) external view returns (DevGroundFe[] memory) {
+        uint256[] memory stakedTokens = ownerToTokens[_owner];
+        DevGroundFe[] memory userInfo = new DevGroundFe[](stakedTokens.length);
+
+        uint256 i;
+        for (; i < userInfo.length; ++i) {
+            uint256 stakedToken = stakedTokens[i];
+            DevelopmentGround memory devGround = getDevelopmentGroundInfo(
+                stakedToken
+            );
+            uint256 unlockTime = devGround.lockPeriod + devGround.entryTime;
+            uint256 timeLeft = block.timestamp < unlockTime
+                ? unlockTime - block.timestamp
+                : 0;
+            userInfo[i] = DevGroundFe(
+                uint96(timeLeft),
+                uint96(block.timestamp - devGround.entryTime),
+                uint64(stakedToken),
+                getPrimarySkill(stakedToken),
+                getDevelopmentGroundBonesReward(stakedToken)
+            );
+        }
+
+        return userInfo;
     }
 
     event EnterDevelopmentGround(

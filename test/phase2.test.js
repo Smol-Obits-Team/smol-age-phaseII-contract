@@ -594,11 +594,22 @@ describe("test phase two", () => {
       "NotAuthorized"
     );
   });
-  it("check fe", async () => {
+  it("caves fe info", async () => {
     await stakeInPit()
-    await caves.enterCaves([1]);
+    await caves.enterCaves([1, 2]);
     await increaseTime(24)
-    const res = await caves.getUserInfo(owner.address)
-    console.log(res.toString())
+    const res = await caves.getCavesFeInfo(owner.address)
+    console.log(res)
+  })
+  it("dev ground fe info", async () => {
+    await stakeInPit()
+    await devGrounds.enterDevelopmentGround(
+      [1, 3],
+      [toDays(50), toDays(150)],
+      [0, 1]
+    );
+    await increaseTime(24)
+    const res = await devGrounds.getDevGroundFeInfo(owner.address)
+    console.log(res)
   })
 });
