@@ -1,18 +1,28 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {Lib} from "./library/Lib.sol";
-import {Ownable} from "solady/src/auth/Ownable.sol";
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
-import {IBones} from "./interfaces/IBones.sol";
-import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import {ITreasure} from "./interfaces/ITreasure.sol";
-import {ERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+import { Lib } from "./library/Lib.sol";
+import { Ownable } from "solady/src/auth/Ownable.sol";
+import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
+import { IBones } from "./interfaces/IBones.sol";
+import {
+    StringsUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import { ITreasure } from "./interfaces/ITreasure.sol";
+import {
+    ERC1155Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC1155/ERC1155Upgradeable.sol";
+
+import {
+    LengthsNotEqual,
+    InvalidTokenId,
+    NotAuthorized
+} from "./library/Error.sol";
 
 contract Supplies is ERC1155Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
 
-    address public phase2Address;
+    address public laborGround;
     address public treasure;
     address public bones;
     address public magic;
@@ -46,8 +56,8 @@ contract Supplies is ERC1155Upgradeable, Ownable {
         baseUri = _baseUri;
     }
 
-    function setPhase2Addresss(address _phase2Address) external onlyOwner {
-        phase2Address = _phase2Address;
+    function setLaborGroundAddresss(address _laborGround) external onlyOwner {
+        laborGround = _laborGround;
     }
 
     /**
@@ -62,9 +72,9 @@ contract Supplies is ERC1155Upgradeable, Ownable {
     ) public {
         uint256 i;
         if (_tokenId.length != _amount.length || _amount.length != _curr.length)
-            revert Lib.LengthsNotEqual();
+            revert LengthsNotEqual();
         for (; i < _tokenId.length; ) {
-            if (_tokenId[i] > 3 || _tokenId[i] < 1) revert Lib.InvalidTokenId();
+            if (_tokenId[i] > 3 || _tokenId[i] < 1) revert InvalidTokenId();
             payForToken(_curr[i], _amount[i]);
             _mint(msg.sender, _tokenId[i], _amount[i], "");
             unchecked {
@@ -95,7 +105,7 @@ contract Supplies is ERC1155Upgradeable, Ownable {
         address operator,
         bool approved
     ) public virtual override {
-        if (operator != phase2Address) revert Lib.NotAuthorized();
+        if (operator != laborGround) revert NotAuthorized();
         super.setApprovalForAll(operator, approved);
     }
 

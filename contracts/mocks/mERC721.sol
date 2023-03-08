@@ -1,10 +1,16 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {Lib} from "../library/Lib.sol";
-import {Ownable} from "solady/src/auth/Ownable.sol";
-import {StringsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-import {ERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import { Lib } from "../library/Lib.sol";
+import { Ownable } from "solady/src/auth/Ownable.sol";
+import {
+    StringsUpgradeable
+} from "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import {
+    ERC721Upgradeable
+} from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+
+import { NotAContract, NotAuthorized } from "../library/Error.sol";
 
 contract mERC721 is ERC721Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
@@ -72,12 +78,12 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         address _addr,
         bool _state
     ) external onlyOwner {
-        if (_addr.code.length == 0) revert Lib.NotAContract();
+        if (_addr.code.length == 0) revert NotAContract();
         allowedTo[_addr] = _state;
     }
 
     function _isAllowed() internal view {
-        if (!allowedTo[msg.sender]) revert Lib.NotAuthorized();
+        if (!allowedTo[msg.sender]) revert NotAuthorized();
     }
 
     function getPrimarySkill(

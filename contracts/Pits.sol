@@ -1,10 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import {Lib} from "./library/Lib.sol";
-import {SafeTransferLib} from "solady/src/utils/SafeTransferLib.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { Lib } from "./library/Lib.sol";
+import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    Initializable
+} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { BalanceIsInsufficient } from "./library/Error.sol";
 
 contract Pits is Initializable {
     IERC20 public bones;
@@ -23,7 +26,7 @@ contract Pits is Initializable {
 
     function stakeBonesInYard(uint256 _amount) external {
         if (bones.balanceOf(msg.sender) < _amount)
-            revert Lib.BalanceIsInsufficient();
+            revert BalanceIsInsufficient();
         uint256 bonesBalance = bonesStaked;
         SafeTransferLib.safeTransferFrom(
             address(bones),
@@ -46,7 +49,7 @@ contract Pits is Initializable {
     }
 
     function removeBonesFromYard(uint256 _amount) external {
-        if (_amount > balance[msg.sender]) revert Lib.BalanceIsInsufficient();
+        if (_amount > balance[msg.sender]) revert BalanceIsInsufficient();
         uint256 bonesBalance = bonesStaked;
         balance[msg.sender] -= _amount;
         bonesStaked -= _amount;

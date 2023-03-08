@@ -6,9 +6,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
 
-  let neandersmolAddress, bonesAddress, animalsAddress, randomizerAddress;
-  const neandersmol = await ethers.getContract("mERC721");
-  const bones = await ethers.getContract("Token");
+
+  let neandersmol, bones, animals, neandersmolAddress, bonesAddress, animalsAddress, randomizerAddress
+  neandersmol = await ethers.getContract("mERC721");
+  bones = await ethers.getContract("Token");
+
+
+
   /**
    * smol - testnet and localhost
    * bones - testnet and localhost
@@ -16,8 +20,10 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
    * randomizer - localhost
    */
   if (chainId === 31337) {
-    const animals = await ethers.getContract("SmolAgeAnimals");
-    const randomizer = await ethers.getContract("Randomizer");
+
+    animals = await ethers.getContract("SmolAgeAnimals");
+    randomizer = await ethers.getContract("Randomizer");
+
     neandersmolAddress = neandersmol.address;
     bonesAddress = bones.address;
     animalsAddress = animals.address;
@@ -40,37 +46,55 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   supplies = await ethers.getContract("Supplies");
   consumables = await ethers.getContract("Consumables");
 
-  const helperLibrary = await deploy("Lib", {
-    from: deployer,
-  });
-  const args = [
-    pits.address,
-    bonesAddress,
-    animalsAddress,
-    supplies.address,
-    consumables.address,
-    neandersmolAddress,
-    randomizerAddress,
-  ];
+
 
   try {
-    await deploy("Phase2", {
+    const dg = await deploy("DevelopmentGrounds", {
       from: deployer,
-      libraries: {
-        Lib: helperLibrary.address,
-      },
       proxy: {
         owner: deployer,
         proxyContract: "OpenZeppelinTransparentProxy",
         execute: {
           init: {
             methodName: "initialize",
-            args,
+            args: [pits.address, neandersmolAddress, bonesAddress],
           },
         },
       },
       log: true,
     });
+    const caves = await deploy("Caves", {
+      from: deployer,
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [pits.address, bonesAddress, neandersmolAddress],
+          },
+        },
+      },
+      log: true,
+    });
+    const lg = await deploy("LaborGrounds", {
+      from: deployer,
+
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [pits.address, animalsAddress, supplies.address, consumables.address, neandersmolAddress, randomizerAddress],
+          },
+        },
+      },
+      log: true,
+    });
+
+
+
   } catch (e) {
     console.log(e);
   }

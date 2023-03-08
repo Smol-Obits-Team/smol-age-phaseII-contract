@@ -73,7 +73,7 @@ module.exports = {
   },
 
   etherscan: {
-    apiKey: { arbiscan: ARBISCAN_API_KEY },
+    apiKey: ARBISCAN_API_KEY
   },
   mocha: {
     timeout: 200000, // 200 seconds max for running tests
