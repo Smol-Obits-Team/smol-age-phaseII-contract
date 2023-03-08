@@ -42,9 +42,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   supplies = await ethers.getContract("Supplies");
   consumables = await ethers.getContract("Consumables");
 
-  const helperLibrary = await deploy("Lib", {
-    from: deployer,
-  });
+
 
   try {
     const dg = await deploy("DevelopmentGrounds", {
@@ -61,7 +59,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       },
       log: true,
     });
-    await deploy("Caves", {
+    const caves = await deploy("Caves", {
       from: deployer,
       proxy: {
         owner: deployer,
@@ -75,7 +73,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       },
       log: true,
     });
-    await deploy("LaborGrounds", {
+    const lg = await deploy("LaborGrounds", {
       from: deployer,
 
       proxy: {
@@ -90,6 +88,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       },
       log: true,
     });
+
+
+
   } catch (e) {
     console.log(e);
   }

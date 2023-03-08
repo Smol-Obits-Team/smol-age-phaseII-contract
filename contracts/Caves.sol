@@ -141,8 +141,13 @@ contract Caves is Initializable {
         uint256[] memory tokenIds = getStakedTokens(_user);
         CavesFeInfo[] memory userInfo = new CavesFeInfo[](tokenIds.length);
         for (uint256 i; i < tokenIds.length; ++i) {
-            uint256 timeLeft = (100 days +
-                getCavesInfo(tokenIds[i]).stakingTime) - block.timestamp;
+            uint256 timeLeft = 100 days +
+                getCavesInfo(tokenIds[i]).stakingTime >
+                block.timestamp
+                ? 100 days +
+                    getCavesInfo(tokenIds[i]).stakingTime -
+                    block.timestamp
+                : 0;
             userInfo[i] = CavesFeInfo(
                 getCavesReward(tokenIds[i]),
                 uint128(tokenIds[i]),

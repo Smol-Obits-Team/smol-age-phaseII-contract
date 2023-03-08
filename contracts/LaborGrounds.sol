@@ -153,7 +153,7 @@ contract LaborGrounds is Initializable {
             LaborGround storage labor = laborGround[_tokenId[i]];
             if (labor.owner != msg.sender && labor.animalId != animalsId + 1)
                 revert NotYourToken();
-
+            labor.animalId = 0;
             animals.safeTransferFrom(
                 address(this),
                 msg.sender,
@@ -161,7 +161,7 @@ contract LaborGrounds is Initializable {
                 1,
                 ""
             );
-            labor.animalId = 0;
+
             emit RemoveAnimalsFromLaborGround(
                 msg.sender,
                 _tokenId[i],
