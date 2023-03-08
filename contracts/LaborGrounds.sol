@@ -194,8 +194,7 @@ contract LaborGrounds is Initializable {
      @param _tokenId An array of token IDs that the user wants to claim.
 */
     function claimCollectables(uint256[] calldata _tokenId) external {
-        uint256 i;
-        for (; i < _tokenId.length; ++i) claimCollectable(_tokenId[i]);
+        for (uint256 i; i < _tokenId.length; ++i) claimCollectable(_tokenId[i]);
     }
 
     /**

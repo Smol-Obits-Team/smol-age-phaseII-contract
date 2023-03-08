@@ -73,13 +73,10 @@ contract Supplies is ERC1155Upgradeable, Ownable {
         uint256 i;
         if (_tokenId.length != _amount.length || _amount.length != _curr.length)
             revert LengthsNotEqual();
-        for (; i < _tokenId.length; ) {
+        for (; i < _tokenId.length; ++i) {
             if (_tokenId[i] > 3 || _tokenId[i] < 1) revert InvalidTokenId();
             payForToken(_curr[i], _amount[i]);
             _mint(msg.sender, _tokenId[i], _amount[i], "");
-            unchecked {
-                ++i;
-            }
         }
     }
 

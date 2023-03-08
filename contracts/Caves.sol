@@ -99,8 +99,7 @@ contract Caves is Initializable {
      */
 
     function claimCaveReward(uint256[] calldata _tokenId) external {
-        uint256 i;
-        for (; i < _tokenId.length; ++i) claimCaveReward(_tokenId[i]);
+        for (uint256 i; i < _tokenId.length; ++i) claimCaveReward(_tokenId[i]);
     }
 
     /**

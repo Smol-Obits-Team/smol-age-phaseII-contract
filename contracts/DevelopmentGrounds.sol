@@ -271,8 +271,7 @@ contract DevelopmentGrounds is Initializable {
         bool[] calldata _stake
     ) external {
         if (_tokenId.length != _stake.length) revert LengthsNotEqual();
-        uint256 i;
-        for (; i < _tokenId.length; ++i)
+        for (uint256 i; i < _tokenId.length; ++i)
             claimDevelopmentGroundBonesReward(_tokenId[i], _stake[i]);
     }
 
@@ -323,8 +322,8 @@ contract DevelopmentGrounds is Initializable {
      */
 
     function leaveDevelopmentGround(uint256[] calldata _tokenId) external {
-        uint256 i;
-        for (; i < _tokenId.length; ++i) leaveDevelopmentGround(_tokenId[i]);
+        for (uint256 i; i < _tokenId.length; ++i)
+            leaveDevelopmentGround(_tokenId[i]);
     }
 
     /**
