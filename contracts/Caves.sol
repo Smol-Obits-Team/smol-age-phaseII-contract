@@ -112,9 +112,7 @@ contract Caves is Initializable {
         Cave memory cave = caves[_tokenId];
         if (cave.lastRewardTimestamp == 0) return 0;
         return
-            ((block.timestamp - cave.lastRewardTimestamp) / 1 days) *
-            10 *
-            10 ** 18;
+            ((block.timestamp - cave.lastRewardTimestamp) / 1 days) * 10 ** 19;
     }
 
     /**
