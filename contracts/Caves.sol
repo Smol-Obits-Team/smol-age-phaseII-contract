@@ -126,11 +126,24 @@ contract Caves is Initializable {
         return caves[_tokenId];
     }
 
+    /**
+     * @dev Returns an array of token IDs that are currently staked by the given owner.
+     * @param _owner The address of the owner.
+     * @return An array of staked token IDs.
+     */
+
     function getStakedTokens(
         address _owner
-    ) public view returns (uint256[] memory res) {
+    ) public view returns (uint256[] memory) {
         return ownerToTokens[_owner];
     }
+
+    /**
+    @dev Retrieves information about a user's staked tokens in the Caves farm.
+    @param _user The address of the user whose information is being retrieved.
+    @return An array of CavesFeInfo structs containing information about the user's staked tokens,
+    including the amount of rewards earned, the token ID, and the time left for the staking period.
+    */
 
     function getCavesFeInfo(
         address _user
@@ -142,8 +155,8 @@ contract Caves is Initializable {
                 getCavesInfo(tokenIds[i]).stakingTime >
                 block.timestamp
                 ? 100 days +
-                    getCavesInfo(tokenIds[i]).stakingTime -
-                    block.timestamp
+                    (block.timestamp - getCavesInfo(tokenIds[i]).stakingTime) /
+                    1 days
                 : 0;
             userInfo[i] = CavesFeInfo(
                 getCavesReward(tokenIds[i]),
@@ -154,11 +167,6 @@ contract Caves is Initializable {
 
         return userInfo;
     }
-
-    /**
-     * start---------------current-time----------opener
-     * timeLeft opener - currentTime
-     */
 
     event EnterCaves(
         address indexed owner,

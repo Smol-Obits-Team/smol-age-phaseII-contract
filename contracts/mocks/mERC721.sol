@@ -86,6 +86,17 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         if (!allowedTo[msg.sender]) revert NotAuthorized();
     }
 
+    function stake() external {}
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 firstTokenId,
+        uint256 batchSize
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+    }
+
     function getPrimarySkill(
         uint256 _tokenId
     ) external view returns (PrimarySkill memory) {

@@ -12,15 +12,17 @@ import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {
-    DevelopmentGround,
-    LaborGround,
     Jobs,
     Grounds,
-    DevGroundFe
+    BonesFeInfo,
+    LaborGround,
+    DevGroundFeInfo,
+    DevelopmentGround
 } from "./library/StructsEnums.sol";
 import {
     LengthsNotEqual,
     ZeroBalanceError,
+    InvalidPos,
     NotYourToken,
     WrongMultiple,
     CsIsBellowHundred,
@@ -150,6 +152,45 @@ contract DevelopmentGrounds is Initializable {
         }
     }
 
+    function calculateBones(
+        address _owner
+    ) external view returns (uint256, uint256) {
+        uint256[] memory stakedTokens = ownerToTokens[_owner];
+        uint256 thetaxed;
+        uint256 theuntaxed;
+        for (uint256 i; i < stakedTokens.length; ++i) {
+            (uint256 t, uint256 u) = calculateBones(stakedTokens[i]);
+            thetaxed += t;
+            theuntaxed += u;
+        }
+
+        return (thetaxed, theuntaxed);
+    }
+
+    function calculateBones(
+        uint256 _tokenId
+    ) internal view returns (uint256, uint256) {
+        DevelopmentGround memory devGround = developmentGround[_tokenId];
+        if (devGround.bonesStaked == 0) return (0, 0);
+        uint256 i = 1;
+        uint256 amountUnTaxed;
+        uint256 amountTaxed;
+
+        /**
+         * return amount of bones to be taxed
+         */
+
+        for (; i <= devGround.amountPosition; ++i) {
+            uint256 time = trackTime[_tokenId][i];
+
+            block.timestamp < time + 30 days
+                ? amountTaxed += trackToken[_tokenId][time]
+                : amountUnTaxed += trackToken[_tokenId][time];
+        }
+
+        return (amountTaxed, amountUnTaxed);
+    }
+
     /**
      * @dev Helper function to remove bones from a specific development ground
      * @param _tokenId The unique identifier for the development ground
@@ -157,6 +198,7 @@ contract DevelopmentGrounds is Initializable {
      */
     function removeBones(uint256 _tokenId, bool _all) internal {
         DevelopmentGround memory devGround = developmentGround[_tokenId];
+        if (devGround.owner != msg.sender) revert NotYourToken();
         if (devGround.bonesStaked == 0) revert ZeroBalanceError();
         uint256 bal;
         uint256 i = 1;
@@ -170,7 +212,7 @@ contract DevelopmentGrounds is Initializable {
             );
             if (block.timestamp < time + 30 days && !_all) continue;
 
-            block.timestamp < time + 30 days && _all
+            block.timestamp < time + 30 days && _all && rand() % 2 == 0
                 ? amount += trackToken[_tokenId][time] / 2
                 : amount += trackToken[_tokenId][time];
 
@@ -187,12 +229,39 @@ contract DevelopmentGrounds is Initializable {
 
         bal = devGround.bonesStaked - amount;
 
-        if (bal != 0 && _all)
-            SafeTransferLib.safeTransfer(address(bones), address(1), bal);
+        if (bal != 0 && _all) bones.burn(address(this), bal);
 
         if (amount != 0)
             SafeTransferLib.safeTransfer(address(bones), msg.sender, bal);
 
+        emit RemoveBones(msg.sender, _tokenId, amount);
+    }
+
+    function removeSingleBones(uint256 _tokenId, uint256 _pos) external {
+        DevelopmentGround memory devGround = developmentGround[_tokenId];
+        if (devGround.owner != msg.sender) revert NotYourToken();
+        if (devGround.amountPosition < _pos) revert InvalidPos();
+        if (devGround.bonesStaked == 0) revert ZeroBalanceError();
+        developPrimarySkill(_tokenId);
+        uint256 amount;
+        uint256 time = trackTime[_tokenId][_pos];
+        uint256 initialAmount = trackToken[_tokenId][time];
+
+        block.timestamp < time + 30 days && rand() % 2 == 0
+            ? amount += trackToken[_tokenId][time] / 2
+            : amount += trackToken[_tokenId][time];
+
+        devGround.amountPosition == 1
+            ? trackTime[_tokenId][_pos] = 0
+            : trackTime[_tokenId][_pos] = trackTime[_tokenId][_pos + 1];
+        trackToken[_tokenId][time] = 0;
+        developmentGround[_tokenId].amountPosition -= 1;
+        uint256 bal = initialAmount - amount;
+
+        if (bal != 0) bones.burn(address(this), bal);
+
+        if (amount != 0)
+            SafeTransferLib.safeTransfer(address(bones), msg.sender, bal);
         emit RemoveBones(msg.sender, _tokenId, amount);
     }
 
@@ -377,12 +446,35 @@ contract DevelopmentGrounds is Initializable {
         if (_tokenId.length != _animalsId.length) revert LengthsNotEqual();
     }
 
+    function rand() private view returns (uint256) {
+        uint256 seed = uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.timestamp +
+                        ((
+                            uint256(keccak256(abi.encodePacked(block.coinbase)))
+                        ) / (block.timestamp)) +
+                        block.gaslimit +
+                        ((uint256(keccak256(abi.encodePacked(msg.sender)))) /
+                            (block.timestamp)) +
+                        block.number
+                )
+            )
+        );
+
+        return seed;
+    }
+
     function lockTimeExists(uint256 _lockTime) internal pure returns (bool) {
         return
             _lockTime == 50 days ||
             _lockTime == 100 days ||
             _lockTime == 150 days;
     }
+
+    /*                                                                           */
+    /*                           VIEW FUNCTIONS                                  */
+    /*                                                                           */
 
     /**
      * Retrieve information about a Development Ground token.
@@ -397,17 +489,56 @@ contract DevelopmentGrounds is Initializable {
         return developmentGround[_tokenId];
     }
 
+    /**
+     * @dev Returns an array of token IDs that are currently staked by the given owner.
+     * @param _owner The address of the owner.
+     * @return An array of staked token IDs.
+     */
+
     function getStakedTokens(
         address _owner
-    ) external view returns (uint256[] memory res) {
+    ) external view returns (uint256[] memory) {
         return ownerToTokens[_owner];
     }
 
+    /**
+     * @dev Returns an array of BonesFeInfo structs containing information about the Bone tokens
+     * staked at certain time.
+     * @param _tokenId The ID of the token to retrieve information for.
+     * @return An array of BonesFeInfo structs containing Bone token and timestamp information.
+     */
+
+    function bonesToTime(
+        uint256 _tokenId
+    ) external view returns (BonesFeInfo[] memory) {
+        DevelopmentGround memory devGround = developmentGround[_tokenId];
+        BonesFeInfo[] memory bonesFe = new BonesFeInfo[](
+            devGround.amountPosition
+        );
+        uint256 i;
+        for (; i < devGround.amountPosition; ++i) {
+            uint256 time = trackTime[_tokenId][i + 1];
+            uint256 amount = trackToken[_tokenId][time];
+            bonesFe[i] = BonesFeInfo(amount, time);
+        }
+
+        return bonesFe;
+    }
+
+    /**
+     * @dev Returns an array of DevGroundFeInfo structs containing information about the
+     * DevelopmentGround tokens staked by the specified owner.
+     * @param _owner The address of the owner.
+     * @return An array of DevGroundFeInfo structs containing DevelopmentGround token information.
+     */
+
     function getDevGroundFeInfo(
         address _owner
-    ) external view returns (DevGroundFe[] memory) {
+    ) external view returns (DevGroundFeInfo[] memory) {
         uint256[] memory stakedTokens = ownerToTokens[_owner];
-        DevGroundFe[] memory userInfo = new DevGroundFe[](stakedTokens.length);
+        DevGroundFeInfo[] memory userInfo = new DevGroundFeInfo[](
+            stakedTokens.length
+        );
 
         uint256 i;
         for (; i < userInfo.length; ++i) {
@@ -417,14 +548,15 @@ contract DevelopmentGrounds is Initializable {
             );
             uint256 unlockTime = devGround.lockPeriod + devGround.entryTime;
             uint256 timeLeft = block.timestamp < unlockTime
-                ? unlockTime - block.timestamp
+                ? (unlockTime - block.timestamp) / 1 days
                 : 0;
-            userInfo[i] = DevGroundFe(
+            userInfo[i] = DevGroundFeInfo(
                 uint96(timeLeft),
                 uint96(block.timestamp - devGround.entryTime),
                 uint64(stakedToken),
                 getPrimarySkill(stakedToken),
-                getDevelopmentGroundBonesReward(stakedToken)
+                getDevelopmentGroundBonesReward(stakedToken),
+                devGround.ground
             );
         }
 

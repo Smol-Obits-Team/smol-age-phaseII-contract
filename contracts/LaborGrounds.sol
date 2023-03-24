@@ -24,15 +24,15 @@ import {
 } from "./library/Error.sol";
 
 import {
-    DevelopmentGround,
-    LaborGround,
     Jobs,
-    Grounds
+    Grounds,
+    LaborGround,
+    LaborGroundFeInfo
 } from "./library/StructsEnums.sol";
 
 contract LaborGrounds is Initializable {
     IPits public pits;
-    IRandomizer public randomizer;
+    IRandomizer private randomizer;
     IConsumables public consumables;
     INeandersmol public neandersmol;
     IERC1155Upgradeable public animals;
@@ -384,6 +384,10 @@ contract LaborGrounds is Initializable {
         if (_job == Jobs.Mining) return _tokenId == 3;
     }
 
+    /*                                                                           */
+    /*                           VIEW FUNCTIONS                                  */
+    /*                                                                           */
+
     /**
      * Retrieve information about a Labor Ground token.
      * @dev This function returns a LaborGround struct containing information about a Labor Ground token, specified by its ID, _tokenId.
@@ -393,7 +397,7 @@ contract LaborGrounds is Initializable {
 
     function getLaborGroundInfo(
         uint256 _tokenId
-    ) external view returns (LaborGround memory lg) {
+    ) public view returns (LaborGround memory lg) {
         lg = laborGround[_tokenId];
         if (lg.animalId == 0) {
             return laborGround[_tokenId];
@@ -403,10 +407,40 @@ contract LaborGrounds is Initializable {
         }
     }
 
+    /**
+     * @dev Returns an array of token IDs that are currently staked by the given owner.
+     * @param _owner The address of the owner.
+     * @return An array of staked token IDs.
+     */
+
     function getStakedTokens(
         address _owner
-    ) external view returns (uint256[] memory res) {
+    ) external view returns (uint256[] memory) {
         return ownerToTokens[_owner];
+    }
+
+    function getLaborGroundFeInfo(
+        address _owner
+    ) external view returns (LaborGroundFeInfo[] memory) {
+        uint256[] memory stakedTokens = ownerToTokens[_owner];
+        LaborGroundFeInfo[] memory userInfo = new LaborGroundFeInfo[](
+            stakedTokens.length
+        );
+
+        uint256 i;
+        for (; i < stakedTokens.length; ++i) {
+            uint256 timeLeft = block.timestamp <
+                3 days + getLaborGroundInfo(stakedTokens[i]).lockTime
+                ? (block.timestamp -
+                    getLaborGroundInfo(stakedTokens[i]).lockTime) / 1 days
+                : 0;
+            userInfo[i] = LaborGroundFeInfo(
+                uint128(stakedTokens[i]),
+                uint128(timeLeft)
+            );
+        }
+
+        return userInfo;
     }
 
     event ClaimCollectable(address indexed owner, uint256 indexed tokenId);
