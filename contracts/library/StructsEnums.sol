@@ -33,12 +33,23 @@ struct CavesFeInfo {
     uint128 timeLeft;
 }
 
-struct DevGroundFe {
+struct DevGroundFeInfo {
     uint96 timeLeft;
     uint96 daysStaked;
     uint64 stakedSmols;
     uint256 skillLevel;
-    uint256 bonesOccured;
+    uint256 bonesAccured;
+    Grounds ground;
+}
+
+struct BonesFeInfo {
+    uint256 balance;
+    uint256 timeStaked;
+}
+
+struct LaborGroundFeInfo {
+    uint128 tokenId;
+    uint128 timeLeft;
 }
 
 /**

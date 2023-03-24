@@ -2,6 +2,7 @@
 pragma solidity ^0.8.17;
 
 error CsToHigh();
+error InvalidPos();
 error NotAContract();
 error NotYourToken();
 error NotAuthorized();
