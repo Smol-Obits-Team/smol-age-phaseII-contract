@@ -57,15 +57,16 @@ describe("test phase two", () => {
 
     const groundsAddress = [devGrounds.address, caves.address, laborGrounds.address]
 
+    await neandersmol.setStakingHandlers(groundsAddress, true)
+    await neandersmol.setPrimarySkillUpdater(groundsAddress[0], true)
+
     for (addr of groundsAddress) {
       const balance = await bones.balanceOf(owner.address);
-      await neandersmol.setApprovalForAll(addr, true);
       await bones.approve(addr, balance);
     }
 
 
     const balance = await bones.balanceOf(owner.address);
-    await neandersmol.setAuthorizedAddress(devGrounds.address, true);
     await supplies.setLaborGroundAddresss(laborGrounds.address);
     await supplies.setApprovalForAll(laborGrounds.address, true);
     await animals.setApprovalForAll(laborGrounds.address, true);

@@ -83,7 +83,7 @@ contract DevelopmentGrounds is Initializable {
             if (neandersmol.ownerOf(tokenId) != msg.sender)
                 revert NotYourToken();
             if (!lockTimeExists(lockTime)) revert InvalidLockTime();
-            neandersmol.transferFrom(msg.sender, address(this), tokenId);
+            neandersmol.stakingHandler(tokenId, true);
             devGround.owner = msg.sender;
             devGround.entryTime = uint64(block.timestamp);
             devGround.lockPeriod = uint64(lockTime);
@@ -410,7 +410,7 @@ contract DevelopmentGrounds is Initializable {
         if (devGround.bonesStaked > 0) removeBones(_tokenId, true);
         Lib.removeItem(ownerToTokens[msg.sender], (_tokenId));
         delete developmentGround[_tokenId];
-        neandersmol.transferFrom(address(this), msg.sender, _tokenId);
+        neandersmol.stakingHandler(_tokenId, false);
         emit LeaveDevelopmentGround(msg.sender, _tokenId);
     }
 
