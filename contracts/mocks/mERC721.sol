@@ -10,13 +10,19 @@ import {
     ERC721Upgradeable
 } from "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 
-import { NotAContract, NotAuthorized } from "../library/Error.sol";
+import {
+    NotAContract,
+    NotAuthorized,
+    TokenIsStaked
+} from "../library/Error.sol";
 
 contract mERC721 is ERC721Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
     uint256 public tokenId;
 
     string public uri;
+
+    mapping(uint256 => bool) private staked;
 
     modifier isAllowed() {
         _isAllowed();
@@ -86,15 +92,18 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         if (!allowedTo[msg.sender]) revert NotAuthorized();
     }
 
-    function stake() external {}
+    function stakingHandler(uint256 _tokenId, bool _state) external isAllowed {
+        staked[_tokenId] = _state;
+    }
 
     function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 firstTokenId,
-        uint256 batchSize
+        address _from,
+        address _to,
+        uint256 _firstTokenId,
+        uint256 _batchSize
     ) internal virtual override {
-        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
+        if (staked[_firstTokenId]) revert TokenIsStaked();
+        super._beforeTokenTransfer(_from, _to, _firstTokenId, _batchSize);
     }
 
     function getPrimarySkill(

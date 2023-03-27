@@ -50,7 +50,7 @@ contract Caves is Initializable {
             Cave storage cave = caves[tokenId];
             if (neandersmol.ownerOf(tokenId) != msg.sender)
                 revert NotYourToken();
-            neandersmol.transferFrom(msg.sender, address(this), tokenId);
+            neandersmol.stakingHandler(tokenId, true);
             cave.owner = msg.sender;
             cave.stakingTime = uint48(block.timestamp);
             cave.lastRewardTimestamp = uint48(block.timestamp);
@@ -75,7 +75,7 @@ contract Caves is Initializable {
             if (getCavesReward(tokenId) != 0) claimCaveReward(tokenId);
             Lib.removeItem(ownerToTokens[msg.sender], tokenId);
             delete caves[tokenId];
-            neandersmol.transferFrom(address(this), msg.sender, tokenId);
+            neandersmol.stakingHandler(tokenId, false);
             emit LeaveCave(msg.sender, tokenId);
         }
     }
