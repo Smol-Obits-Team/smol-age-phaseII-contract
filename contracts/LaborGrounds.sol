@@ -91,7 +91,7 @@ contract LaborGrounds is Initializable {
                 1,
                 ""
             );
-            neandersmol.transferFrom(msg.sender, address(this), tokenId);
+            neandersmol.stakingHandler(tokenId, true);
             labor.owner = msg.sender;
             labor.lockTime = uint32(block.timestamp);
             labor.supplyId = uint32(supplyId);
@@ -256,7 +256,7 @@ contract LaborGrounds is Initializable {
                     1,
                     ""
                 );
-            neandersmol.transferFrom(address(this), msg.sender, tokenId);
+            neandersmol.stakingHandler(tokenId, false);
             emit LeaveLaborGround(msg.sender, tokenId);
         }
     }

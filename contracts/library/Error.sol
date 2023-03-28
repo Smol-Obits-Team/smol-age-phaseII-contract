@@ -8,6 +8,7 @@ error NotYourToken();
 error NotAuthorized();
 error WrongMultiple();
 error CannotClaimNow();
+error TokenIsStaked();
 error TransferFailed();
 error InvalidTokenId();
 error InvalidLockTime();

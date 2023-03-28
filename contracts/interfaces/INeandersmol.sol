@@ -11,4 +11,6 @@ interface INeandersmol is IERC721Upgradeable {
     function developFarmers(uint256 _tokenId, uint256 _amount) external;
 
     function developFighter(uint256 _tokenId, uint256 _amount) external;
+
+    function stakingHandler(uint256 _tokenId, bool _state) external;
 }
