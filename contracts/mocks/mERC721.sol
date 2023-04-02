@@ -104,7 +104,7 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         if (!allowedToHandleStaking[msg.sender]) revert NotAuthorized();
         staked[_tokenId] = _state;
         // Emit staked change event
-        SetStaked(_tokenId, _state);
+        emit SetStaked(_tokenId, _state);
     }
 
     function _beforeTokenTransfer(
