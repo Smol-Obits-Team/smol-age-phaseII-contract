@@ -91,6 +91,13 @@ contract mERC721 is ERC721Upgradeable, Ownable {
     ) external onlyOwner {
         allowedToUpdateSkill[_addr] = _state;
     }
+    
+    function setCommonSenseForDevelopment(
+        uint256 _tokenId,
+        uint256 _amount
+    ) external onlyOwner {
+        commonSense[_tokenId] = _amount;
+    }
 
     function setStakingHandlers(
         address[] calldata _addr,
@@ -127,10 +134,8 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         uri = _uri;
     }
 
-    function tokenURI(
-        uint256 _tokenId
-    ) public view override returns (string memory) {
-        return string(abi.encodePacked(uri, _tokenId.toString()));
+    function tokenURI(uint256) public pure override returns (string memory) {
+        return "ipfs://QmVCVBYka79tQfDYxpZStN9o3MdYwJWGdPyhTjyHDQfswC";
     }
 
     // Event for staked change
