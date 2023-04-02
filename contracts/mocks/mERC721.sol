@@ -65,6 +65,7 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         uint256 _amount
     ) external isAllowed {
         tokenToSkill[_tokenId].mystics += _amount;
+        emit MysticsSkillUpdated(_tokenId, _amount);
     }
 
     function developFarmers(
@@ -72,6 +73,7 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         uint256 _amount
     ) external isAllowed {
         tokenToSkill[_tokenId].farmers += _amount;
+        emit FarmerSkillUpdated(_tokenId, _amount);
     }
 
     function developFighter(
@@ -79,6 +81,7 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         uint256 _amount
     ) external isAllowed {
         tokenToSkill[_tokenId].fighters += _amount;
+        emit FightersSkillUpdated(_tokenId, _amount);
     }
 
     function getCommonSense(uint256 _tokenId) external view returns (uint256) {
@@ -91,7 +94,7 @@ contract mERC721 is ERC721Upgradeable, Ownable {
     ) external onlyOwner {
         allowedToUpdateSkill[_addr] = _state;
     }
-    
+
     function setCommonSenseForDevelopment(
         uint256 _tokenId,
         uint256 _amount
@@ -140,6 +143,7 @@ contract mERC721 is ERC721Upgradeable, Ownable {
 
     // Event for staked change
     event SetStaked(uint256 indexed tokenId, bool state);
-    
-
+    event MysticsSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);
+    event FarmerSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);
+    event FightersSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);
 }
