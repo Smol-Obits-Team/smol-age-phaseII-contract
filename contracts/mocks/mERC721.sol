@@ -103,6 +103,8 @@ contract mERC721 is ERC721Upgradeable, Ownable {
     function stakingHandler(uint256 _tokenId, bool _state) external {
         if (!allowedToHandleStaking[msg.sender]) revert NotAuthorized();
         staked[_tokenId] = _state;
+        // Emit staked change event
+        SetStaked(_tokenId, _state);
     }
 
     function _beforeTokenTransfer(
@@ -130,4 +132,9 @@ contract mERC721 is ERC721Upgradeable, Ownable {
     ) public view override returns (string memory) {
         return string(abi.encodePacked(uri, _tokenId.toString()));
     }
+
+    // Event for staked change
+    event SetStaked(uint256 indexed tokenId, bool state);
+    
+
 }
