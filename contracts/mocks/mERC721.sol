@@ -16,11 +16,6 @@ import {
     TokenIsStaked
 } from "../library/Error.sol";
 
-/**
- * only dev ground is allowed to upgrade the primary skills
- * dev ground, labor ground and caves are allowed to call the staking
- * contracts
- */
 
 contract mERC721 is ERC721Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
@@ -114,18 +109,10 @@ contract mERC721 is ERC721Upgradeable, Ownable {
         if (!allowedToHandleStaking[msg.sender]) revert NotAuthorized();
         staked[_tokenId] = _state;
         // Emit staked change event
-        emit SetStaked(_tokenId, _state);
+        emit StakeState(_tokenId, _state);
     }
 
-    function _beforeTokenTransfer(
-        address _from,
-        address _to,
-        uint256 _firstTokenId,
-        uint256 _batchSize
-    ) internal virtual override {
-        if (staked[_firstTokenId]) revert TokenIsStaked();
-        super._beforeTokenTransfer(_from, _to, _firstTokenId, _batchSize);
-    }
+    
 
     function getPrimarySkill(
         uint256 _tokenId
@@ -142,7 +129,7 @@ contract mERC721 is ERC721Upgradeable, Ownable {
     }
 
     // Event for staked change
-    event SetStaked(uint256 indexed tokenId, bool state);
+    event StakeState(uint256 indexed tokenId, bool state);
     event MysticsSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);
     event FarmerSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);
     event FightersSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);

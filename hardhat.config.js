@@ -63,6 +63,9 @@ module.exports = {
       {
         version: "0.8.18",
       },
+      {
+        version: "0.8.13",
+      },
     ],
     settings: {
       optimizer: {
@@ -73,7 +76,7 @@ module.exports = {
   },
 
   etherscan: {
-    apiKey: ARBISCAN_API_KEY
+    apiKey: ARBISCAN_API_KEY,
   },
   mocha: {
     timeout: 200000, // 200 seconds max for running tests
