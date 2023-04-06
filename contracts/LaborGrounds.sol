@@ -6,6 +6,7 @@ import { IPits } from "./interfaces/IPits.sol";
 import { IRandomizer } from "./interfaces/IRandomizer.sol";
 import { INeandersmol } from "./interfaces/INeandersmol.sol";
 import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
+import { Ownable } from "solady/src/auth/Ownable.sol";
 import {
     IConsumables,
     IERC1155Upgradeable
@@ -30,7 +31,7 @@ import {
     LaborGroundFeInfo
 } from "./library/StructsEnums.sol";
 
-contract LaborGrounds is Initializable {
+contract LaborGrounds is Initializable, Ownable {
     IPits public pits;
     IRandomizer private randomizer;
     IConsumables public consumables;
@@ -50,6 +51,25 @@ contract LaborGrounds is Initializable {
         address _neandersmol,
         address _randomizer
     ) external initializer {
+        _initializeOwner(msg.sender);
+        setAddress(
+            _pits,
+            _animals,
+            _supplies,
+            _consumables,
+            _neandersmol,
+            _randomizer
+        );
+    }
+
+    function setAddress(
+        address _pits,
+        address _animals,
+        address _supplies,
+        address _consumables,
+        address _neandersmol,
+        address _randomizer
+    ) public onlyOwner {
         animals = IERC1155Upgradeable(_animals);
         pits = IPits(_pits);
         supplies = IERC1155Upgradeable(_supplies);

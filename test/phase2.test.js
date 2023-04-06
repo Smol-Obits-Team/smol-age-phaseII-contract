@@ -45,7 +45,7 @@ describe("test phase two", () => {
     devGrounds = await ethers.getContract("DevelopmentGrounds");
     laborGrounds = await ethers.getContract("LaborGrounds");
     caves = await ethers.getContract("Caves");
-    neandersmol = await ethers.getContract("mERC721");
+    neandersmol = await ethers.getContract("NeanderSmol");
     bones = await ethers.getContract("Token");
     pits = await ethers.getContract("Pits");
     animals = await ethers.getContract("SmolAgeAnimals");
@@ -55,44 +55,52 @@ describe("test phase two", () => {
     magic = await ethers.getContract("mERC20");
     randomizer = await ethers.getContract("Randomizer");
 
-    const groundsAddress = [devGrounds.address, caves.address, laborGrounds.address]
+    const groundsAddress = [
+      devGrounds.address,
+      caves.address,
+      laborGrounds.address,
+    ];
 
-    await neandersmol.setStakingHandlers(groundsAddress, true)
-    await neandersmol.setPrimarySkillUpdater(groundsAddress[0], true)
+    await neandersmol.grantStakingContracts(groundsAddress);
+    await neandersmol.grantDevGround(groundsAddress[0]);
 
     for (addr of groundsAddress) {
       const balance = await bones.balanceOf(owner.address);
       await bones.approve(addr, balance);
     }
 
-
     const balance = await bones.balanceOf(owner.address);
     await supplies.setLaborGroundAddresss(laborGrounds.address);
     await supplies.setApprovalForAll(laborGrounds.address, true);
     await animals.setApprovalForAll(laborGrounds.address, true);
     await consumables.setAllowedAddress(laborGrounds.address, true);
-    await neandersmol.connect(player).mint(1);
+    await neandersmol.publicMint(15);
+    await neandersmol.connect(player).publicMint(17);
 
     await bones.approve(supplies.address, balance);
     await magic.approve(supplies.address, balance);
     await treasure.setApprovalForAll(supplies.address, true);
+
+    await neandersmol.updateCommonSense(1, ethers.utils.parseEther("101"));
+    await neandersmol.updateCommonSense(3, ethers.utils.parseEther("101"));
   });
 
   it("initializer checks", async () => {
     await expect(
-      devGrounds.initialize(
-        pits.address, neandersmol.address, bones.address
-      )
+      devGrounds.initialize(pits.address, neandersmol.address, bones.address)
     ).to.be.revertedWith("Initializable: contract is already initialized");
     await expect(
       laborGrounds.initialize(
-        pits.address, animals.address, supplies.address, consumables.address, neandersmol.address, randomizer.address
+        pits.address,
+        animals.address,
+        supplies.address,
+        consumables.address,
+        neandersmol.address,
+        randomizer.address
       )
     ).to.be.revertedWith("Initializable: contract is already initialized");
     await expect(
-      caves.initialize(
-        pits.address, neandersmol.address, bones.address
-      )
+      caves.initialize(pits.address, neandersmol.address, bones.address)
     ).to.be.revertedWith("Initializable: contract is already initialized");
     await expect(
       supplies.initialize(bones.address, magic.address, treasure.address, "")
@@ -112,7 +120,9 @@ describe("test phase two", () => {
         pits.stakeBonesInYard(toWei((INITIAL_SUPPLY + 1).toString()))
       ).to.be.revertedWith("BalanceIsInsufficient");
       await stakeInPit();
-      expect(await pits.getBonesStaked(owner.address)).to.equal(toWei("3000000"));
+      expect(await pits.getBonesStaked(owner.address)).to.equal(
+        toWei("3000000")
+      );
       expect(await pits.getTotalBonesStaked()).to.equal(toWei("3000000"));
     });
 
@@ -129,7 +139,7 @@ describe("test phase two", () => {
       ).to.be.revertedWith("BalanceIsInsufficient");
       await expect(
         pits.stakeBonesInYard(toWei(((INITIAL_SUPPLY * 3) / 10).toString()))
-      ).to.be.reverted
+      ).to.be.reverted;
       const balance = await bones.balanceOf(owner.address);
       await bones.approve(pits.address, balance);
       const tx = await pits.stakeBonesInYard(
@@ -154,10 +164,9 @@ describe("test phase two", () => {
       expect(await pits.getDaysOff(blockB.timestamp)).to.equal("1");
       expect(await pits.totalDaysOff()).to.equal("1");
     });
-  })
+  });
 
   describe("Developement ground", () => {
-
     it("enter development ground", async () => {
       await expect(
         devGrounds.enterDevelopmentGround([], [1], [0])
@@ -172,19 +181,22 @@ describe("test phase two", () => {
       await expect(
         devGrounds.enterDevelopmentGround([2], [1], [1])
       ).to.be.revertedWith("CsIsBellowHundred");
+      await neandersmol.updateCommonSense(16, ethers.utils.parseEther("101"));
       await expect(
         devGrounds.enterDevelopmentGround([16], [1], [1])
       ).to.be.revertedWith("NotYourToken");
-
+      await neandersmol.updateCommonSense(1, ethers.utils.parseEther("100"));
       await expect(
         devGrounds.enterDevelopmentGround([1], [1], [1])
       ).to.be.revertedWith("InvalidLockTime");
-
       const tx = await devGrounds.enterDevelopmentGround(
         [1, 3],
         [toDays(50), toDays(150)],
         [0, 1]
       );
+      await expect(
+        neandersmol.transferFrom(owner.address, player.address, 1)
+      ).to.be.revertedWith("TokenIsStaked");
       const txRes = await tx.wait();
       const blockBefore = await ethers.provider.getBlock(
         txRes.logs[0].blockNumber
@@ -195,7 +207,9 @@ describe("test phase two", () => {
       expect(info.lockPeriod).to.equal(toDays(50));
       expect(info.entryTime).to.equal(blockBefore.timestamp);
       expect((await devGrounds.getDevelopmentGroundInfo(3)).ground).to.equal(1);
-      expect((await devGrounds.getStakedTokens(owner.address)).toString()).to.equal("1,3")
+      expect(
+        (await devGrounds.getStakedTokens(owner.address)).toString()
+      ).to.equal("1,3");
     });
     it("stake bones in development ground", async () => {
       await expect(
@@ -239,7 +253,10 @@ describe("test phase two", () => {
         devGrounds.claimDevelopmentGroundBonesReward([1], [true])
       ).to.be.revertedWith("ZeroBalanceError");
       await increaseTime(24);
-      const tx = await devGrounds.claimDevelopmentGroundBonesReward([1], [false]);
+      const tx = await devGrounds.claimDevelopmentGroundBonesReward(
+        [1],
+        [false]
+      );
       const txRes = await tx.wait();
       const blockBefore = await ethers.provider.getBlock(
         txRes.logs[0].blockNumber
@@ -247,11 +264,12 @@ describe("test phase two", () => {
       expect(await bones.totalSupply()).to.equal(
         toWei((INITIAL_SUPPLY + 10).toString())
       );
-      expect((await devGrounds.getDevelopmentGroundInfo(1)).lastRewardTime).to.equal(
-        blockBefore.timestamp
-      );
+      expect(
+        (await devGrounds.getDevelopmentGroundInfo(1)).lastRewardTime
+      ).to.equal(blockBefore.timestamp);
       expect(tx).to.emit("ClaimDevelopmentGroundBonesReward");
       await stakeInPit();
+      await neandersmol.updateCommonSense(3, ethers.utils.parseEther("101"));
       await devGrounds.enterDevelopmentGround([3], [toDays(150)], [1]);
       await increaseTime(72);
       await expect(
@@ -262,9 +280,9 @@ describe("test phase two", () => {
 
       await devGrounds.claimDevelopmentGroundBonesReward([3], [true]);
 
-      expect((await devGrounds.getDevelopmentGroundInfo(3)).bonesStaked).to.equal(
-        toWei("1000")
-      );
+      expect(
+        (await devGrounds.getDevelopmentGroundInfo(3)).bonesStaked
+      ).to.equal(toWei("1000"));
       expect(await bones.totalSupply()).to.equal(
         toWei((INITIAL_SUPPLY + 1310).toString())
       );
@@ -274,11 +292,14 @@ describe("test phase two", () => {
       );
 
       await increaseTime(24 * 10);
-      const txR = await devGrounds.claimDevelopmentGroundBonesReward([3], [true]);
-
-      expect((await devGrounds.getDevelopmentGroundInfo(3)).bonesStaked).to.equal(
-        toWei("2000")
+      const txR = await devGrounds.claimDevelopmentGroundBonesReward(
+        [3],
+        [true]
       );
+
+      expect(
+        (await devGrounds.getDevelopmentGroundInfo(3)).bonesStaked
+      ).to.equal(toWei("2000"));
       expect(txR).to.emit("StakeBonesInDevelopmentGround");
     });
     it("get development ground reward", async () => {
@@ -316,13 +337,14 @@ describe("test phase two", () => {
       expect(await bones.balanceOf(owner.address)).to.equal(
         bal.add(toWei("300"))
       );
-      expect(await devGrounds.getStakedTokens(owner.address)).to.be.an("array").that.is.empty
+      expect(await devGrounds.getStakedTokens(owner.address)).to.be.an("array")
+        .that.is.empty;
       expect(tx).to.emit("LeaveDevelopmentGround");
     });
     it("remove bones from development ground", async () => {
-      await expect(devGrounds.removeBones([1], [true, false])).to.be.revertedWith(
-        "LengthsNotEqual"
-      );
+      await expect(
+        devGrounds.removeBones([1], [true, false])
+      ).to.be.revertedWith("LengthsNotEqual");
       await stakeInPit();
       await devGrounds.enterDevelopmentGround(
         [1, 3],
@@ -337,18 +359,21 @@ describe("test phase two", () => {
       await devGrounds.stakeBonesInDevelopmentGround([toWei("2000")], [3]);
       await increaseTime(24 * 29);
       const tx = await devGrounds.removeBones([1, 3], [true, false]);
-      expect((await devGrounds.getDevelopmentGroundInfo(3)).bonesStaked).to.equal(
-        toWei("2000")
-      );
+      expect(
+        (await devGrounds.getDevelopmentGroundInfo(3)).bonesStaked
+      ).to.equal(toWei("2000"));
       const ts = await bones.totalSupply();
       await devGrounds.removeBones([3], [true]);
 
-      expect(parseInt(await bones.totalSupply())).to.greaterThanOrEqual(parseInt(ts) - parseInt(toWei("1000")))
-      expect(await devGrounds.bonesToTime(1)).to.be.empty
+      expect(parseInt(await bones.totalSupply())).to.greaterThanOrEqual(
+        parseInt(ts) - parseInt(toWei("1000"))
+      );
+      expect(await devGrounds.bonesToTime(1)).to.be.empty;
       expect(tx).to.emit("RemoveBones");
     });
 
     it("get primary skill", async () => {
+      await neandersmol.updateCommonSense(10, ethers.utils.parseEther("101"));
       await stakeInPit();
       await devGrounds.enterDevelopmentGround(
         [1, 3, 10],
@@ -388,73 +413,78 @@ describe("test phase two", () => {
       await devGrounds.stakeBonesInDevelopmentGround([toWei("1000")], [1]);
       await increaseTime(24);
       await devGrounds.stakeBonesInDevelopmentGround([toWei("1000")], [1]);
-      const tx = await devGrounds.stakeBonesInDevelopmentGround([toWei("2000")], [3]);
-      const txRes = await tx.wait();
-      const bBlock = await ethers.provider.getBlock(
-        txRes.logs[0].blockNumber
+      const tx = await devGrounds.stakeBonesInDevelopmentGround(
+        [toWei("2000")],
+        [3]
       );
+      const txRes = await tx.wait();
+      const bBlock = await ethers.provider.getBlock(txRes.logs[0].blockNumber);
       await increaseTime(24 * 29);
-      await expect(devGrounds.removeSingleBones(4, 1)).to.be.revertedWith("NotYourToken")
-      await expect(devGrounds.removeSingleBones(1, 3)).to.be.revertedWith("InvalidPos")
-      expect((await devGrounds.bonesToTime(1)).length).to.equal(2)
+      await expect(devGrounds.removeSingleBones(4, 1)).to.be.revertedWith(
+        "NotYourToken"
+      );
+      await expect(devGrounds.removeSingleBones(1, 3)).to.be.revertedWith(
+        "InvalidPos"
+      );
+      expect((await devGrounds.bonesToTime(1)).length).to.equal(2);
       await devGrounds.removeSingleBones(1, 1);
-      expect((await devGrounds.bonesToTime(1)).length).to.equal(1)
-      const res = await devGrounds.bonesToTime(3)
-      expect(res[0].timeStaked).to.equal(bBlock.timestamp)
-      console.log(res[0])
-    })
+      expect((await devGrounds.bonesToTime(1)).length).to.equal(1);
+      const res = await devGrounds.bonesToTime(3);
+      expect(res[0].timeStaked).to.equal(bBlock.timestamp);
+      console.log(res[0]);
+    });
     it("calculate bones", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await devGrounds.enterDevelopmentGround(
         [1, 3],
         [toDays(50), toDays(150)],
         [0, 1]
       );
       await devGrounds.stakeBonesInDevelopmentGround([toWei("1000")], [1]);
-      const res = await devGrounds.calculateBones(owner.address)
-      expect(res[0]).to.equal(toWei("1000"))
-    })
+      const res = await devGrounds.calculateBones(owner.address);
+      expect(res[0]).to.equal(toWei("1000"));
+    });
     it("dev ground fe info", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await devGrounds.enterDevelopmentGround(
         [1, 3],
         [toDays(50), toDays(150)],
         [0, 1]
       );
-      await increaseTime(24)
-      const res = await devGrounds.getDevGroundFeInfo(owner.address)
-      expect(res[1].timeLeft.toString()).to.equal("149")
-      expect(res[0].daysStaked.toString()).to.equal("86400")
-      expect(res[1].skillLevel.toString()).to.equal("0")
-      expect(res[0].bonesAccured.toString()).to.equal(toWei("10"))
-      expect(res[1].ground).to.equal(1)
-    })
-  })
+      await increaseTime(24);
+      const res = await devGrounds.getDevGroundFeInfo(owner.address);
+      expect(res[1].timeLeft.toString()).to.equal("149");
+      expect(res[0].daysStaked.toString()).to.equal("86400");
+      expect(res[1].skillLevel.toString()).to.equal("0");
+      expect(res[0].bonesAccured.toString()).to.equal(toWei("10"));
+      expect(res[1].ground).to.equal(1);
+    });
+  });
 
   describe("Labor Ground", () => {
     it("enter labor ground", async () => {
-      await expect(laborGrounds.enterLaborGround([2, 4], [2, 3], [1, 2])).to.be.revertedWith(
-        "DevelopmentGroundIsLocked"
-      );
-      await stakeInPit()
-      await expect(laborGrounds.enterLaborGround([1], [], [1])).to.be.revertedWith(
-        "LengthsNotEqual"
-      );
-      await expect(laborGrounds.enterLaborGround([16], [1], [1])).to.be.revertedWith(
-        "NotYourToken"
-      );
-      await expect(laborGrounds.enterLaborGround([1], [1], [1])).to.be.revertedWith(
-        "CsToHigh"
-      );
-      await expect(laborGrounds.enterLaborGround([2], [0], [1])).to.be.revertedWith(
-        "InvalidTokenForThisJob"
-      );
-      await expect(laborGrounds.enterLaborGround([2], [1], [2])).to.be.revertedWith(
-        "InvalidTokenForThisJob"
-      );
-      await expect(laborGrounds.enterLaborGround([2], [2], [0])).to.be.revertedWith(
-        "InvalidTokenForThisJob"
-      );
+      await expect(
+        laborGrounds.enterLaborGround([2, 4], [2, 3], [1, 2])
+      ).to.be.revertedWith("DevelopmentGroundIsLocked");
+      await stakeInPit();
+      await expect(
+        laborGrounds.enterLaborGround([1], [], [1])
+      ).to.be.revertedWith("LengthsNotEqual");
+      await expect(
+        laborGrounds.enterLaborGround([16], [1], [1])
+      ).to.be.revertedWith("NotYourToken");
+      await expect(
+        laborGrounds.enterLaborGround([1], [1], [1])
+      ).to.be.revertedWith("CsToHigh");
+      await expect(
+        laborGrounds.enterLaborGround([2], [0], [1])
+      ).to.be.revertedWith("InvalidTokenForThisJob");
+      await expect(
+        laborGrounds.enterLaborGround([2], [1], [2])
+      ).to.be.revertedWith("InvalidTokenForThisJob");
+      await expect(
+        laborGrounds.enterLaborGround([2], [2], [0])
+      ).to.be.revertedWith("InvalidTokenForThisJob");
 
       await supplies.mint([2, 3], [5, 5], [2, 1]);
       const tx = await laborGrounds.enterLaborGround([2, 4], [2, 3], [1, 2]);
@@ -468,12 +498,16 @@ describe("test phase two", () => {
       expect(info.lockTime).to.equal(blockBefore.timestamp);
       expect(info.supplyId).to.equal(2);
       expect((await laborGrounds.getLaborGroundInfo(4)).job).to.equal(2);
-      expect((await laborGrounds.getLaborGroundInfo(4)).owner).to.equal(owner.address);
+      expect((await laborGrounds.getLaborGroundInfo(4)).owner).to.equal(
+        owner.address
+      );
       expect(await supplies.balanceOf(laborGrounds.address, 2)).to.equal(1);
-      expect((await laborGrounds.getStakedTokens(owner.address)).toString()).to.equal("2,4")
+      expect(
+        (await laborGrounds.getStakedTokens(owner.address)).toString()
+      ).to.equal("2,4");
     });
     it("bring animals to labor ground", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await expect(
         laborGrounds.bringInAnimalsToLaborGround([2], [])
       ).to.be.revertedWith("LengthsNotEqual");
@@ -487,7 +521,7 @@ describe("test phase two", () => {
       expect((await laborGrounds.getLaborGroundInfo(2)).animalId).to.equal(0);
     });
     it("remove animals from labor ground", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await supplies.mint([3], [5], [0]);
       await laborGrounds.enterLaborGround([2], [3], [2]);
       await laborGrounds.bringInAnimalsToLaborGround([2], [0]);
@@ -500,7 +534,7 @@ describe("test phase two", () => {
       await laborGrounds.removeAnimalsFromLaborGround([2], [0]);
     });
     it("bring animals and claim collectables from labor ground", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await supplies.mint([1, 2, 3], [3, 2, 2], [0, 1, 2]);
       await supplies.setApprovalForAll(laborGrounds.address, true);
       await laborGrounds.enterLaborGround(
@@ -519,22 +553,27 @@ describe("test phase two", () => {
       await laborGrounds.claimCollectables([2, 4, 5, 6, 7, 8]);
     });
     it("leave labor ground", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await supplies.mint([1, 2], [2, 2], [0, 1]);
       await supplies.setApprovalForAll(laborGrounds.address, true);
       await laborGrounds.enterLaborGround([4, 2], [1, 2], [0, 1]);
-      expect((await laborGrounds.getLaborGroundInfo(4)).owner).to.equal(owner.address);
-      expect((await laborGrounds.getLaborGroundInfo(2)).owner).to.equal(owner.address);
+      expect((await laborGrounds.getLaborGroundInfo(4)).owner).to.equal(
+        owner.address
+      );
+      expect((await laborGrounds.getLaborGroundInfo(2)).owner).to.equal(
+        owner.address
+      );
       expect(await supplies.balanceOf(laborGrounds.address, 1)).to.equal(1);
       await increaseTime(24 * 3);
       await laborGrounds.leaveLaborGround([4]);
-      expect((await laborGrounds.getStakedTokens(owner.address)).toString()).to.equal("2")
+      expect(
+        (await laborGrounds.getStakedTokens(owner.address)).toString()
+      ).to.equal("2");
       await laborGrounds.leaveLaborGround([2]);
-      expect(await laborGrounds.getStakedTokens(owner.address)).to.be.empty
-
+      expect(await laborGrounds.getStakedTokens(owner.address)).to.be.empty;
     });
     it("labor fe info", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await supplies.mint([1, 2, 3], [3, 2, 2], [0, 1, 2]);
       await supplies.setApprovalForAll(laborGrounds.address, true);
       await laborGrounds.enterLaborGround(
@@ -551,16 +590,14 @@ describe("test phase two", () => {
       );
       await increaseTime(24 * 3);
       await laborGrounds.claimCollectables([2, 4, 5, 6, 7, 8]);
-      const res = await laborGrounds.getLaborGroundFeInfo(owner.address)
-      console.log(res.toString())
-    })
-  })
+      const res = await laborGrounds.getLaborGroundFeInfo(owner.address);
+      console.log(res.toString());
+    });
+  });
 
   describe("Caves", () => {
-
-
     it("enter caves", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await expect(caves.enterCaves([16])).to.be.revertedWith("NotYourToken");
       const tx = await caves.enterCaves([1]);
       const txRes = await tx.wait();
@@ -572,7 +609,7 @@ describe("test phase two", () => {
       expect(time).to.equal(blockBefore.timestamp);
     });
     it("get cave rewards", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await caves.enterCaves([1]);
       await increaseTime(24);
       expect(await caves.getCavesReward(1)).to.equal(toWei("10"));
@@ -583,7 +620,7 @@ describe("test phase two", () => {
       expect(await caves.getCavesReward(2)).to.equal(toWei("10"));
     });
     it("claim cave rewards", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await caves.enterCaves([1]);
       await expect(caves.claimCaveReward([1])).to.be.revertedWith(
         "ZeroBalanceError"
@@ -605,7 +642,7 @@ describe("test phase two", () => {
       );
     });
     it("leave cave", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await caves.enterCaves([1]);
       await expect(caves.leaveCave([2])).to.be.revertedWith("NotYourToken");
       await expect(caves.leaveCave([1])).to.be.revertedWith(
@@ -619,23 +656,23 @@ describe("test phase two", () => {
       expect(await bones.totalSupply()).to.equal(
         toWei((INITIAL_SUPPLY + 1000).toString())
       );
-      await stakeInPit()
+      await stakeInPit();
       await caves.enterCaves([1]);
       await increaseTime(24 * 100);
       await caves.claimCaveReward([1]);
       await caves.leaveCave([1]);
 
-      expect(await caves.getStakedTokens(owner.address)).to.be.empty
+      expect(await caves.getStakedTokens(owner.address)).to.be.empty;
     });
 
     it("caves fe info", async () => {
-      await stakeInPit()
+      await stakeInPit();
       await caves.enterCaves([1, 2]);
-      await increaseTime(24)
-      const res = await caves.getCavesFeInfo(owner.address)
-      console.log(res.toString())
-    })
-  })
+      await increaseTime(24);
+      const res = await caves.getCavesFeInfo(owner.address);
+      console.log(res.toString());
+    });
+  });
 
   it("get address", async () => {
     expect(await devGrounds.bones()).to.equal(bones.address);

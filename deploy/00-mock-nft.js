@@ -6,7 +6,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const chainId = network.config.chainId;
 
   if (chainId !== 42161) {
-    await deploy("mERC721", {
+    await deploy("NeanderSmol", {
       from: deployer,
       log: true,
       proxy: {

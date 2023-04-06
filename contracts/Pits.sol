@@ -8,8 +8,9 @@ import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { BalanceIsInsufficient } from "./library/Error.sol";
+import { Ownable } from "solady/src/auth/Ownable.sol";
 
-contract Pits is Initializable {
+contract Pits is Initializable, Ownable {
     IERC20 public bones;
     uint256 public bonesStaked;
 
@@ -17,11 +18,15 @@ contract Pits is Initializable {
 
     uint256 public totalDaysOff;
 
+    uint256 public minimumPercent;
+
     mapping(address => uint256) private balance;
     mapping(uint256 => uint256) private trackDaysOff;
 
     function initialize(address _bones) external initializer {
+        _initializeOwner(msg.sender);
         bones = IERC20(_bones);
+        minimumPercent = 3;
     }
 
     function stakeBonesInYard(uint256 _amount) external {
@@ -63,6 +68,10 @@ contract Pits is Initializable {
         emit RemoveBonesFromYard(msg.sender, _amount);
     }
 
+    function setMinimumPercent(uint256 _minimumPercent) external onlyOwner {
+        minimumPercent = _minimumPercent;
+    }
+
     function getTotalDaysOff() external view returns (uint256) {
         return totalDaysOff;
     }
@@ -72,7 +81,7 @@ contract Pits is Initializable {
     }
 
     function minimumBonesRequired() internal view returns (uint256) {
-        return (bones.totalSupply() * 3) / 10;
+        return (bones.totalSupply() * minimumPercent) / 10;
     }
 
     function getBonesStaked(address _addr) external view returns (uint256) {

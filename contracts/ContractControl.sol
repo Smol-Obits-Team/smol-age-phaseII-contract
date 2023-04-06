@@ -11,15 +11,15 @@ error NotTheStakingContract();
 abstract contract ContractControl is AccessControlUpgradeable {
     bytes32 public constant SMOLNEANDER_OWNER_ROLE =
         keccak256("SMOLNEANDER_OWNER_ROLE");
+    bytes32 public constant SMOLNEANDER_DEV_GROUND_ROLE =
+        keccak256("SMOLNEANDER_DEV_GROUND_ROLE");
     bytes32 public constant SMOLNEANDER_CONTRACT_ROLE =
         keccak256("SMOLNEANDER_CONTRACT_ROLE");
-    bytes32 public constant SMOLNEANDER_MINTER_ROLE =
-        keccak256("SMOLNEANDER_MINTER_ROLE");
     bytes32 public constant SMOLNEANDER_ADMIN_ROLE =
         keccak256("SMOLNEANDER_ADMIN_ROLE");
 
-    modifier onlyDevGround(address _devGround) {
-        if (msg.sender != _devGround) revert NotAuthorized();
+    modifier onlyDevGround() {
+        if (!isDevGround(msg.sender)) revert NotAuthorized();
         _;
     }
 
@@ -42,17 +42,29 @@ abstract contract ContractControl is AccessControlUpgradeable {
         __AccessControl_init();
         _setRoleAdmin(SMOLNEANDER_OWNER_ROLE, SMOLNEANDER_OWNER_ROLE);
         _setRoleAdmin(SMOLNEANDER_CONTRACT_ROLE, SMOLNEANDER_OWNER_ROLE);
-        _setRoleAdmin(SMOLNEANDER_MINTER_ROLE, SMOLNEANDER_OWNER_ROLE);
+        _setRoleAdmin(SMOLNEANDER_DEV_GROUND_ROLE, SMOLNEANDER_OWNER_ROLE);
+
         _setRoleAdmin(SMOLNEANDER_ADMIN_ROLE, SMOLNEANDER_OWNER_ROLE);
 
         _setupRole(SMOLNEANDER_OWNER_ROLE, _msgSender());
         _setupRole(SMOLNEANDER_CONTRACT_ROLE, _msgSender());
-        _setupRole(SMOLNEANDER_MINTER_ROLE, _msgSender());
         _setupRole(SMOLNEANDER_ADMIN_ROLE, _msgSender());
     }
 
-    function grantStaking(address _contract) external {
+    function grantStakingContracts(address[] calldata _contracts) external {
+        for (uint256 i; i < _contracts.length; ++i) grantStaking(_contracts[i]);
+    }
+
+    function grantStaking(address _contract) public {
         grantRole(SMOLNEANDER_CONTRACT_ROLE, _contract);
+    }
+
+    function grantDevGround(address _devGround) external {
+        grantRole(SMOLNEANDER_DEV_GROUND_ROLE, _devGround);
+    }
+
+    function isDevGround(address _devGround) public view returns (bool) {
+        return hasRole(SMOLNEANDER_DEV_GROUND_ROLE, _devGround);
     }
 
     function isStakingContract(address _contract) public view returns (bool) {
@@ -65,14 +77,6 @@ abstract contract ContractControl is AccessControlUpgradeable {
 
     function isOwner(address _owner) public view returns (bool) {
         return hasRole(SMOLNEANDER_OWNER_ROLE, _owner);
-    }
-
-    function grantMinter(address _minter) external {
-        grantRole(SMOLNEANDER_MINTER_ROLE, _minter);
-    }
-
-    function isMinter(address _minter) public view returns (bool) {
-        return hasRole(SMOLNEANDER_MINTER_ROLE, _minter);
     }
 
     function grantAdmin(address _admin) external {

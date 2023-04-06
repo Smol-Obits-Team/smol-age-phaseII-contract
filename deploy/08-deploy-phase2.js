@@ -6,12 +6,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
 
-
-  let neandersmol, bones, animals, neandersmolAddress, bonesAddress, animalsAddress, randomizerAddress
-  neandersmol = await ethers.getContract("mERC721");
+  let neandersmol,
+    bones,
+    animals,
+    neandersmolAddress,
+    bonesAddress,
+    animalsAddress,
+    randomizerAddress;
+  neandersmol = await ethers.getContract("NeanderSmol");
   bones = await ethers.getContract("Token");
-
-
 
   /**
    * smol - testnet and localhost
@@ -20,7 +23,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
    * randomizer - localhost
    */
   if (chainId === 31337) {
-
     animals = await ethers.getContract("SmolAgeAnimals");
     randomizer = await ethers.getContract("Randomizer");
 
@@ -45,8 +47,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   pits = await ethers.getContract("Pits");
   supplies = await ethers.getContract("Supplies");
   consumables = await ethers.getContract("Consumables");
-
-
 
   try {
     const dg = await deploy("DevelopmentGrounds", {
@@ -86,15 +86,19 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         execute: {
           init: {
             methodName: "initialize",
-            args: [pits.address, animalsAddress, supplies.address, consumables.address, neandersmolAddress, randomizerAddress],
+            args: [
+              pits.address,
+              animalsAddress,
+              supplies.address,
+              consumables.address,
+              neandersmolAddress,
+              randomizerAddress,
+            ],
           },
         },
       },
       log: true,
     });
-
-
-
   } catch (e) {
     console.log(e);
   }

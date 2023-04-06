@@ -6,6 +6,7 @@ import { IPits } from "./interfaces/IPits.sol";
 import { IBones } from "./interfaces/IBones.sol";
 import { IRandomizer } from "./interfaces/IRandomizer.sol";
 import { INeandersmol } from "./interfaces/INeandersmol.sol";
+import { Ownable } from "solady/src/auth/Ownable.sol";
 import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
 
 import {
@@ -32,7 +33,7 @@ import {
     NeandersmolsIsLocked
 } from "./library/Error.sol";
 
-contract DevelopmentGrounds is Initializable {
+contract DevelopmentGrounds is Initializable, Ownable {
     IBones public bones;
     IPits public pits;
     INeandersmol public neandersmol;
@@ -42,9 +43,8 @@ contract DevelopmentGrounds is Initializable {
         address _neandersmol,
         address _bones
     ) external initializer {
-        bones = IBones(_bones);
-        pits = IPits(_pits);
-        neandersmol = INeandersmol(_neandersmol);
+        _initializeOwner(msg.sender);
+        setAddress(_pits, _neandersmol, _bones);
     }
 
     // tokenId -> amount position -> staking time
@@ -57,6 +57,16 @@ contract DevelopmentGrounds is Initializable {
     mapping(uint256 => DevelopmentGround) private developmentGround;
 
     uint256 private constant MINIMUM_BONE_STAKE = 1000 * 10 ** 18;
+
+    function setAddress(
+        address _pits,
+        address _neandersmol,
+        address _bones
+    ) public onlyOwner {
+        bones = IBones(_bones);
+        pits = IPits(_pits);
+        neandersmol = INeandersmol(_neandersmol);
+    }
 
     /**
      * @dev Enters the DevelopmentGround by transferring the tokens from the sender to the contract

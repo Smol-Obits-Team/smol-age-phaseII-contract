@@ -74,10 +74,10 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
             AccessControlUpgradeable.supportsInterface(interfaceId);
     }
 
-    function publicMint(uint256 amount) external payable {
-        require(msg.value >= publicPrice * amount, "Incorrect Price");
-        require(publicActive, "Public not active");
-        require(_tokenIdTracker.current() < TOTAL_SUPPLY, "5678 Max Supply");
+    function publicMint(uint256 amount) external {
+        // require(msg.value >= publicPrice * amount, "Incorrect Price");
+        // require(publicActive, "Public not active");
+        // require(_tokenIdTracker.current() < TOTAL_SUPPLY, "5678 Max Supply");
         require(publicMinted[msg.sender] + amount <= 30, "Mints exceeded");
         publicMinted[msg.sender] += amount;
 
@@ -98,7 +98,7 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     function updateCommonSense(
         uint256 _tokenId,
         uint256 amount
-    ) external onlyStakingContract {
+    ) external onlyOwner {
         if (commonSense[_tokenId] + amount >= commonSenseMaxLevel) {
             commonSense[_tokenId] = commonSenseMaxLevel;
         } else {
@@ -111,7 +111,7 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     function developMystics(
         uint256 _tokenId,
         uint256 _amount
-    ) external onlyDevGround(devGround) {
+    ) external onlyDevGround {
         tokenToSkill[_tokenId].mystics += _amount;
         emit MysticsSkillUpdated(_tokenId, _amount);
     }
@@ -119,7 +119,7 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     function developFarmers(
         uint256 _tokenId,
         uint256 _amount
-    ) external onlyDevGround(devGround) {
+    ) external onlyDevGround {
         tokenToSkill[_tokenId].farmers += _amount;
         emit FarmerSkillUpdated(_tokenId, _amount);
     }
@@ -127,12 +127,15 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     function developFighter(
         uint256 _tokenId,
         uint256 _amount
-    ) external onlyDevGround(devGround) {
+    ) external onlyDevGround {
         tokenToSkill[_tokenId].fighters += _amount;
         emit FightersSkillUpdated(_tokenId, _amount);
     }
 
-    function stakingHandler(uint256 _tokenId, bool _state) external {
+    function stakingHandler(
+        uint256 _tokenId,
+        bool _state
+    ) external onlyStakingContract {
         staked[_tokenId] = _state;
         emit StakeState(_tokenId, _state);
     }
@@ -149,6 +152,12 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
 
     function getCommonSense(uint256 _tokenId) external view returns (uint256) {
         return commonSense[_tokenId] / (10 ** decimals);
+    }
+
+    function getPrimarySkill(
+        uint256 _tokenId
+    ) external view returns (PrimarySkill memory) {
+        return tokenToSkill[_tokenId];
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -169,12 +178,9 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     }
 
     function tokenURI(
-        uint256 tokenId
+        uint256 /*tokenId*/
     ) public view virtual override returns (string memory) {
-        return
-            bytes(baseURI).length > 0
-                ? string(abi.encodePacked(baseURI, tokenId.toString()))
-                : "";
+        return "ipfs://QmUZvuiDzeKvKCeizPVKoWesrpGTfy4Ysf3rzgSAps7N9K";
     }
 
     function withdrawAll() external onlyOwner {

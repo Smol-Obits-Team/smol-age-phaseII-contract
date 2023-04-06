@@ -5,6 +5,7 @@ import { Lib } from "./library/Lib.sol";
 import { IBones } from "./interfaces/IBones.sol";
 import { Cave, CavesFeInfo } from "./library/StructsEnums.sol";
 import { IPits } from "./interfaces/IPits.sol";
+import { Ownable } from "solady/src/auth/Ownable.sol";
 
 import { INeandersmol } from "./interfaces/INeandersmol.sol";
 
@@ -18,7 +19,7 @@ import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract Caves is Initializable {
+contract Caves is Initializable, Ownable {
     IPits public pits;
     IBones public bones;
     INeandersmol public neandersmol;
@@ -32,6 +33,15 @@ contract Caves is Initializable {
         address _bones,
         address _neandersmol
     ) external initializer {
+        _initializeOwner(msg.sender);
+        setAddress(_pits, _bones, _neandersmol);
+    }
+
+    function setAddress(
+        address _pits,
+        address _bones,
+        address _neandersmol
+    ) public onlyOwner {
         bones = IBones(_bones);
         pits = IPits(_pits);
         neandersmol = INeandersmol(_neandersmol);
