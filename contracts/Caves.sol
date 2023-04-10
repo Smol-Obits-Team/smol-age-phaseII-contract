@@ -164,9 +164,8 @@ contract Caves is Initializable, Ownable {
             uint256 timeLeft = 100 days +
                 getCavesInfo(tokenIds[i]).stakingTime >
                 block.timestamp
-                ? 100 days +
-                    (block.timestamp - getCavesInfo(tokenIds[i]).stakingTime) /
-                    1 days
+                ? 100 days -
+                    (block.timestamp - getCavesInfo(tokenIds[i]).stakingTime)
                 : 0;
             userInfo[i] = CavesFeInfo(
                 getCavesReward(tokenIds[i]),

@@ -451,8 +451,9 @@ contract LaborGrounds is Initializable, Ownable {
         for (; i < stakedTokens.length; ++i) {
             uint256 timeLeft = block.timestamp <
                 3 days + getLaborGroundInfo(stakedTokens[i]).lockTime
-                ? (block.timestamp -
-                    getLaborGroundInfo(stakedTokens[i]).lockTime) / 1 days
+                ? 3 days -
+                    (block.timestamp -
+                        getLaborGroundInfo(stakedTokens[i]).lockTime)
                 : 0;
             userInfo[i] = LaborGroundFeInfo(
                 uint128(stakedTokens[i]),

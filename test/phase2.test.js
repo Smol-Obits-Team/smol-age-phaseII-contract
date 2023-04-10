@@ -431,7 +431,6 @@ describe("test phase two", () => {
       expect((await devGrounds.bonesToTime(1)).length).to.equal(1);
       const res = await devGrounds.bonesToTime(3);
       expect(res[0].timeStaked).to.equal(bBlock.timestamp);
-      console.log(res[0]);
     });
     it("calculate bones", async () => {
       await stakeInPit();
@@ -591,7 +590,8 @@ describe("test phase two", () => {
       await increaseTime(24 * 3);
       await laborGrounds.claimCollectables([2, 4, 5, 6, 7, 8]);
       const res = await laborGrounds.getLaborGroundFeInfo(owner.address);
-      console.log(res.toString());
+      expect(res[0].tokenId).to.equal(4);
+      expect(res[0].timeLeft).to.equal(86400 * 3);
     });
   });
 
@@ -667,10 +667,12 @@ describe("test phase two", () => {
 
     it("caves fe info", async () => {
       await stakeInPit();
-      await caves.enterCaves([1, 2]);
-      await increaseTime(24);
+      await caves.enterCaves([2]);
+      await increaseTime(24 * 99);
       const res = await caves.getCavesFeInfo(owner.address);
-      console.log(res.toString());
+      expect(res[0].stakedSmols).to.equal(2);
+      expect(res[0].timeLeft).to.equal(86400);
+      expect(res[0].reward).to.equal(ethers.utils.parseEther("990"));
     });
   });
 
