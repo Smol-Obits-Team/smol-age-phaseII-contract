@@ -8,6 +8,7 @@
   { "inputs": [], "name": "NoHandoverRequest", "type": "error" },
   { "inputs": [], "name": "NoMoreAnimalsAllowed", "type": "error" },
   { "inputs": [], "name": "NotYourToken", "type": "error" },
+  { "inputs": [], "name": "TokenIsStaked", "type": "error" },
   { "inputs": [], "name": "Unauthorized", "type": "error" },
   {
     "anonymous": false,

@@ -195,6 +195,13 @@ describe("test phase two", () => {
         [0, 1]
       );
       await expect(
+        devGrounds.enterDevelopmentGround(
+          [1, 3],
+          [toDays(50), toDays(150)],
+          [0, 1]
+        )
+      ).to.be.revertedWith("TokenIsStaked");
+      await expect(
         neandersmol.transferFrom(owner.address, player.address, 1)
       ).to.be.revertedWith("TokenIsStaked");
       const txRes = await tx.wait();
@@ -487,6 +494,9 @@ describe("test phase two", () => {
 
       await supplies.mint([2, 3], [5, 5], [2, 1]);
       const tx = await laborGrounds.enterLaborGround([2, 4], [2, 3], [1, 2]);
+      await expect(
+        laborGrounds.enterLaborGround([2, 4], [2, 3], [1, 2])
+      ).to.be.revertedWith("TokenIsStaked");
       const txRes = await tx.wait();
       const blockBefore = await ethers.provider.getBlock(
         txRes.logs[0].blockNumber
@@ -600,6 +610,7 @@ describe("test phase two", () => {
       await stakeInPit();
       await expect(caves.enterCaves([16])).to.be.revertedWith("NotYourToken");
       const tx = await caves.enterCaves([1]);
+      await expect(caves.enterCaves([1])).to.be.revertedWith("TokenIsStaked");
       const txRes = await tx.wait();
       const blockBefore = await ethers.provider.getBlock(
         txRes.logs[0].blockNumber

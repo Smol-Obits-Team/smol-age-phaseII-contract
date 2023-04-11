@@ -12,7 +12,8 @@ import { INeandersmol } from "./interfaces/INeandersmol.sol";
 import {
     NotYourToken,
     NeandersmolsIsLocked,
-    ZeroBalanceError
+    ZeroBalanceError,
+    TokenIsStaked
 } from "./library/Error.sol";
 
 import {
@@ -60,6 +61,7 @@ contract Caves is Initializable, Ownable {
             Cave storage cave = caves[tokenId];
             if (neandersmol.ownerOf(tokenId) != msg.sender)
                 revert NotYourToken();
+            if (neandersmol.staked(tokenId)) revert TokenIsStaked();
             neandersmol.stakingHandler(tokenId, true);
             cave.owner = msg.sender;
             cave.stakingTime = uint48(block.timestamp);

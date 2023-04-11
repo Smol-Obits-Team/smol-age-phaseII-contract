@@ -30,7 +30,8 @@ import {
     BalanceIsInsufficient,
     InvalidLockTime,
     NeandersmolIsNotInDevelopmentGround,
-    NeandersmolsIsLocked
+    NeandersmolsIsLocked,
+    TokenIsStaked
 } from "./library/Error.sol";
 
 contract DevelopmentGrounds is Initializable, Ownable {
@@ -88,6 +89,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
         for (; i < _tokenId.length; ++i) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             DevelopmentGround storage devGround = developmentGround[tokenId];
+            if (neandersmol.staked(tokenId)) revert TokenIsStaked();
             if (neandersmol.getCommonSense(tokenId) < 100)
                 revert CsIsBellowHundred();
             if (neandersmol.ownerOf(tokenId) != msg.sender)

@@ -4,6 +4,7 @@
   { "inputs": [], "name": "NewOwnerIsZeroAddress", "type": "error" },
   { "inputs": [], "name": "NoHandoverRequest", "type": "error" },
   { "inputs": [], "name": "NotYourToken", "type": "error" },
+  { "inputs": [], "name": "TokenIsStaked", "type": "error" },
   { "inputs": [], "name": "Unauthorized", "type": "error" },
   { "inputs": [], "name": "ZeroBalanceError", "type": "error" },
   {

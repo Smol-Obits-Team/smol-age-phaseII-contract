@@ -21,7 +21,8 @@ import {
     CannotClaimNow,
     InvalidTokenForThisJob,
     CsToHigh,
-    NoMoreAnimalsAllowed
+    NoMoreAnimalsAllowed,
+    TokenIsStaked
 } from "./library/Error.sol";
 
 import {
@@ -99,6 +100,7 @@ contract LaborGrounds is Initializable, Ownable {
         for (; i < _tokenId.length; ++i) {
             (uint256 tokenId, uint256 supplyId) = (_tokenId[i], _supplyId[i]);
             LaborGround storage labor = laborGround[tokenId];
+            if (neandersmol.staked(tokenId)) revert TokenIsStaked();
             if (neandersmol.ownerOf(tokenId) != msg.sender)
                 revert NotYourToken();
             if (neandersmol.getCommonSense(tokenId) > 99) revert CsToHigh();
