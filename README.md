@@ -12,4 +12,4 @@ This project contains a Solidity smart contract for the second pharse of the Smo
 - Bones: 0x7D1d0B0C445bA80b569FcC60128D4F9ee61Eb2f5
 - Magic: 0xB704163b3Eb66dF2B9f6A942fAb88263A3b215A9
 - Neandersmol: 0x5219003C4d1afA8D9F2aE04EcEB618928DA1E6d0
-- SmolAge Animals:0xCa8F5e151465A99504f9F176d9DaF3DCfC702945
+- SmolAge Animals:0x77af3636f97370483BFa127d37C6A8Ce2F3a16b7

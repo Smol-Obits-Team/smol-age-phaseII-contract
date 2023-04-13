@@ -39,6 +39,7 @@ struct DevGroundFeInfo {
     uint64 stakedSmols;
     uint256 skillLevel;
     uint256 bonesAccured;
+    uint256 totalBonesStaked;
     Grounds ground;
 }
 
