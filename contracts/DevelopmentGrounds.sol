@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
-
+import "hardhat/console.sol";
 import { Lib } from "./library/Lib.sol";
 import { IPits } from "./interfaces/IPits.sol";
 import { IBones } from "./interfaces/IBones.sol";
@@ -21,17 +21,18 @@ import {
     DevelopmentGround
 } from "./library/StructsEnums.sol";
 import {
-    LengthsNotEqual,
-    ZeroBalanceError,
     InvalidPos,
     NotYourToken,
+    TokenIsStaked,
     WrongMultiple,
-    CsIsBellowHundred,
-    BalanceIsInsufficient,
+    LengthsNotEqual,
     InvalidLockTime,
-    NeandersmolIsNotInDevelopmentGround,
+    ZeroBalanceError,
+    CsIsBellowHundred,
     NeandersmolsIsLocked,
-    DevelopmentGroundIsLocked
+    BalanceIsInsufficient,
+    DevelopmentGroundIsLocked,
+    NeandersmolIsNotInDevelopmentGround
 } from "./library/Error.sol";
 
 contract DevelopmentGrounds is Initializable, Ownable {
@@ -88,11 +89,13 @@ contract DevelopmentGrounds is Initializable, Ownable {
         Lib.pitsValidation(pits);
         for (; i < _tokenId.length; ++i) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
+            if (neandersmol.staked(tokenId)) revert TokenIsStaked();
             DevelopmentGround storage devGround = developmentGround[tokenId];
             if (neandersmol.getCommonSense(tokenId) < 100)
                 revert CsIsBellowHundred();
             if (neandersmol.ownerOf(tokenId) != msg.sender)
                 revert NotYourToken();
+
             if (!lockTimeExists(lockTime)) revert InvalidLockTime();
             neandersmol.stakingHandler(tokenId, true);
             devGround.owner = msg.sender;

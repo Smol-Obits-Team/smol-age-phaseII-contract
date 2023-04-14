@@ -457,13 +457,19 @@ describe("test phase two", () => {
         [toDays(50), toDays(150)],
         [0, 1]
       );
+      await devGrounds.stakeBonesInDevelopmentGround(
+        [toWei("1000"), toWei("1000")],
+        [1, 3]
+      );
       await increaseTime(24);
       const res = await devGrounds.getDevGroundFeInfo(owner.address);
-      expect(res[1].timeLeft.toString()).to.equal("149");
+      expect(res[1].timeLeft.toString()).to.equal("148");
       expect(res[0].daysStaked.toString()).to.equal("86400");
       expect(res[1].skillLevel.toString()).to.equal("0");
       expect(res[0].bonesAccured.toString()).to.equal(toWei("10"));
       expect(res[1].ground).to.equal(1);
+      expect(res[0].totalBonesStaked).to.equal(toWei("1000"));
+      expect(res[1].totalBonesStaked).to.equal(toWei("1000"));
     });
   });
 
@@ -602,6 +608,7 @@ describe("test phase two", () => {
       const res = await laborGrounds.getLaborGroundFeInfo(owner.address);
       expect(res[0].tokenId).to.equal(4);
       expect(res[0].timeLeft).to.equal(86400 * 3);
+      expect(res[0].animalId).to.equal(0);
     });
   });
 
