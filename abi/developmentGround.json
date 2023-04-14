@@ -305,6 +305,11 @@
             "name": "bonesAccured",
             "type": "uint256"
           },
+          {
+            "internalType": "uint256",
+            "name": "totalBonesStaked",
+            "type": "uint256"
+          },
           { "internalType": "enum Grounds", "name": "ground", "type": "uint8" }
         ],
         "internalType": "struct DevGroundFeInfo[]",
