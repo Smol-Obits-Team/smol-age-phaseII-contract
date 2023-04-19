@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
-import "hardhat/console.sol";
+
 import { Lib } from "./library/Lib.sol";
 import { IPits } from "./interfaces/IPits.sol";
 import { IBones } from "./interfaces/IBones.sol";
@@ -161,7 +161,8 @@ contract DevelopmentGrounds is Initializable, Ownable {
         if (_tokenId.length != _all.length) revert LengthsNotEqual();
         uint256 i;
         for (; i < _tokenId.length; ++i) {
-            developPrimarySkill(_tokenId[i]);
+            if (getPrimarySkill(_tokenId[i]) > 0)
+                developPrimarySkill(_tokenId[i]);
             removeBones(_tokenId[i], _all[i]);
         }
     }
@@ -214,7 +215,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
         DevelopmentGround memory devGround = developmentGround[_tokenId];
         if (devGround.owner != msg.sender) revert NotYourToken();
         if (devGround.bonesStaked == 0) revert ZeroBalanceError();
-        uint256 bal;
+
         uint256 i = 1;
         uint256 amount;
         uint64 count;
@@ -241,15 +242,21 @@ contract DevelopmentGrounds is Initializable, Ownable {
         developmentGround[_tokenId].amountPosition -= count;
         developmentGround[_tokenId].bonesStaked -= amount;
 
-        bal = devGround.bonesStaked - amount;
+        uint256 bal = devGround.bonesStaked - amount;
 
         if (bal != 0 && _all) bones.burn(address(this), bal);
 
         if (amount != 0)
-            SafeTransferLib.safeTransfer(address(bones), msg.sender, bal);
+            SafeTransferLib.safeTransfer(address(bones), msg.sender, amount);
 
         emit RemoveBones(msg.sender, _tokenId, amount);
     }
+
+    /**
+     * @dev Allows the owner of a DevelopmentGround to remove a single bone from a specific position in the track.
+     * @param _tokenId The ID of the DevelopmentGround.
+     * @param _pos The position of the bone to be removed.
+     */
 
     function removeSingleBones(uint256 _tokenId, uint256 _pos) external {
         DevelopmentGround memory devGround = developmentGround[_tokenId];

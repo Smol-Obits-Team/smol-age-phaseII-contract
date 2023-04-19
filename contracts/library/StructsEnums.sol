@@ -49,9 +49,10 @@ struct BonesFeInfo {
 }
 
 struct LaborGroundFeInfo {
-    uint128 timeLeft;
+    uint64 timeLeft;
     uint64 tokenId;
     uint64 animalId;
+    uint64 supplyId;
 }
 
 /**

@@ -40,6 +40,8 @@ contract LaborGrounds is Initializable, Ownable {
     IERC1155Upgradeable public animals;
     IERC1155Upgradeable public supplies;
 
+    uint32 constant MAX_UINT32 = type(uint32).max;
+
     mapping(uint256 => LaborGround) private laborGround;
 
     mapping(address => uint256[]) private ownerToTokens;
@@ -99,7 +101,6 @@ contract LaborGrounds is Initializable, Ownable {
         uint256 i;
         for (; i < _tokenId.length; ++i) {
             (uint256 tokenId, uint256 supplyId) = (_tokenId[i], _supplyId[i]);
-            LaborGround storage labor = laborGround[tokenId];
             if (neandersmol.staked(tokenId)) revert TokenIsStaked();
             if (neandersmol.ownerOf(tokenId) != msg.sender)
                 revert NotYourToken();
@@ -113,12 +114,16 @@ contract LaborGrounds is Initializable, Ownable {
                 1,
                 ""
             );
+
+            laborGround[tokenId] = LaborGround(
+                msg.sender,
+                uint32(block.timestamp),
+                uint32(supplyId),
+                MAX_UINT32,
+                randomizer.requestRandomNumber(),
+                _job[i]
+            );
             neandersmol.stakingHandler(tokenId, true);
-            labor.owner = msg.sender;
-            labor.lockTime = uint32(block.timestamp);
-            labor.supplyId = uint32(supplyId);
-            labor.job = _job[i];
-            labor.requestId = randomizer.requestRandomNumber();
             ownerToTokens[msg.sender].push(tokenId);
             emit EnterLaborGround(msg.sender, tokenId, supplyId, _job[i]);
         }
@@ -140,7 +145,7 @@ contract LaborGrounds is Initializable, Ownable {
             uint256 animalsId = _animalsId[i];
             LaborGround memory labor = laborGround[_tokenId[i]];
             if (labor.owner != msg.sender) revert NotYourToken();
-            if (labor.animalId != 0) revert NoMoreAnimalsAllowed();
+            if (labor.animalId != MAX_UINT32) revert NoMoreAnimalsAllowed();
             animals.safeTransferFrom(
                 msg.sender,
                 address(this),
@@ -148,7 +153,7 @@ contract LaborGrounds is Initializable, Ownable {
                 1,
                 ""
             );
-            laborGround[_tokenId[i]].animalId = uint32(animalsId) + 1; // added one since animals token id starts from 0
+            laborGround[_tokenId[i]].animalId = uint32(animalsId);
 
             emit BringInAnimalsToLaborGround(
                 msg.sender,
@@ -173,7 +178,7 @@ contract LaborGrounds is Initializable, Ownable {
         for (; i < _tokenId.length; ++i) {
             uint256 animalsId = _animalsId[i];
             LaborGround storage labor = laborGround[_tokenId[i]];
-            if (labor.owner != msg.sender && labor.animalId != animalsId + 1)
+            if (labor.owner != msg.sender && labor.animalId != MAX_UINT32)
                 revert NotYourToken();
             labor.animalId = 0;
             animals.safeTransferFrom(
@@ -261,11 +266,11 @@ contract LaborGrounds is Initializable, Ownable {
             LaborGround memory labor = laborGround[tokenId];
             delete laborGround[tokenId];
             Lib.removeItem(ownerToTokens[msg.sender], tokenId);
-            if (labor.animalId != 0)
+            if (labor.animalId != MAX_UINT32)
                 animals.safeTransferFrom(
                     address(this),
                     msg.sender,
-                    labor.animalId - 1,
+                    labor.animalId,
                     1,
                     ""
                 );
@@ -300,7 +305,7 @@ contract LaborGrounds is Initializable, Ownable {
         (uint256 tokenOne, uint256 tokenTwo) = getConsumablesTokenId(labor.job);
         uint256 max;
         uint256 min;
-        if (animalId == 0) {
+        if (animalId == MAX_UINT32) {
             if (rnd < 61) {
                 consumablesTokenId = tokenOne;
             } else if (rnd > 60 && rnd < 81) {
@@ -310,7 +315,7 @@ contract LaborGrounds is Initializable, Ownable {
                 min = 2;
             }
         }
-        if (animalId == 1) {
+        if (animalId == 0) {
             if (rnd < 66) {
                 consumablesTokenId = tokenOne;
             } else if (rnd > 66 && rnd < 86) {
@@ -320,7 +325,7 @@ contract LaborGrounds is Initializable, Ownable {
                 min = 5;
             }
         }
-        if (animalId == 2) {
+        if (animalId == 1) {
             if (rnd < 66) {
                 consumablesTokenId = tokenOne;
             } else if (rnd > 65 && rnd < 96) {
@@ -330,7 +335,7 @@ contract LaborGrounds is Initializable, Ownable {
                 min = 6;
             }
         }
-        if (animalId == 3) {
+        if (animalId == 2) {
             if (rnd < 71) {
                 consumablesTokenId = tokenOne;
             } else if (rnd > 70 && rnd < 96) {
@@ -344,11 +349,11 @@ contract LaborGrounds is Initializable, Ownable {
         if (max != 0 && min != 0)
             breakOrFailed(_tokenId, labor.supplyId, max, min, labor.requestId);
 
-        if (animalId == 4) consumablesTokenId = rnd < 71 ? tokenOne : tokenTwo;
+        if (animalId == 3) consumablesTokenId = rnd < 71 ? tokenOne : tokenTwo;
 
-        if (animalId == 5) consumablesTokenId = rnd < 66 ? tokenOne : tokenTwo;
+        if (animalId == 4) consumablesTokenId = rnd < 66 ? tokenOne : tokenTwo;
 
-        if (animalId == 6) consumablesTokenId = rnd < 61 ? tokenOne : tokenTwo;
+        if (animalId == 5) consumablesTokenId = rnd < 61 ? tokenOne : tokenTwo;
 
         return consumablesTokenId;
     }
@@ -420,13 +425,7 @@ contract LaborGrounds is Initializable, Ownable {
     function getLaborGroundInfo(
         uint256 _tokenId
     ) public view returns (LaborGround memory lg) {
-        lg = laborGround[_tokenId];
-        if (lg.animalId == 0) {
-            return laborGround[_tokenId];
-        } else {
-            lg.animalId -= 1;
-            return lg;
-        }
+        return laborGround[_tokenId];
     }
 
     /**
@@ -459,9 +458,10 @@ contract LaborGrounds is Initializable, Ownable {
                     (block.timestamp - getLaborGroundInfo(tokenId).lockTime)
                 : 0;
             userInfo[i] = LaborGroundFeInfo(
-                uint128(timeLeft),
+                uint64(timeLeft),
                 uint64(tokenId),
-                uint64(animalId)
+                uint64(animalId),
+                uint64(getLaborGroundInfo(tokenId).supplyId)
             );
         }
 

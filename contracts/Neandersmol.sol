@@ -74,10 +74,10 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
             AccessControlUpgradeable.supportsInterface(interfaceId);
     }
 
-    function publicMint(uint256 amount) external {
-        // require(msg.value >= publicPrice * amount, "Incorrect Price");
-        // require(publicActive, "Public not active");
-        // require(_tokenIdTracker.current() < TOTAL_SUPPLY, "5678 Max Supply");
+    function publicMint(uint256 amount) external payable {
+        require(msg.value >= publicPrice * amount, "Incorrect Price");
+        require(publicActive, "Public not active");
+        require(_tokenIdTracker.current() < TOTAL_SUPPLY, "5678 Max Supply");
         require(publicMinted[msg.sender] + amount <= 30, "Mints exceeded");
         publicMinted[msg.sender] += amount;
 

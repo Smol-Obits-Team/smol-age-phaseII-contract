@@ -74,8 +74,11 @@ describe("test phase two", () => {
     await supplies.setApprovalForAll(laborGrounds.address, true);
     await animals.setApprovalForAll(laborGrounds.address, true);
     await consumables.setAllowedAddress(laborGrounds.address, true);
-    await neandersmol.publicMint(15);
-    await neandersmol.connect(player).publicMint(17);
+    await neandersmol.flipPublicState();
+    await neandersmol.publicMint(15, { value: ethers.utils.parseEther("0.3") });
+    await neandersmol
+      .connect(player)
+      .publicMint(17, { value: ethers.utils.parseEther("0.34") });
 
     await bones.approve(supplies.address, balance);
     await magic.approve(supplies.address, balance);
@@ -342,7 +345,7 @@ describe("test phase two", () => {
       await increaseTime(30 * 24);
       const tx = await devGrounds.leaveDevelopmentGround([1]);
       expect(await bones.balanceOf(owner.address)).to.equal(
-        bal.add(toWei("300"))
+        bal.add(toWei("1300"))
       );
       expect(await devGrounds.getStakedTokens(owner.address)).to.be.an("array")
         .that.is.empty;
@@ -377,6 +380,8 @@ describe("test phase two", () => {
       );
       expect(await devGrounds.bonesToTime(1)).to.be.empty;
       expect(tx).to.emit("RemoveBones");
+      const bal = (await devGrounds.getDevelopmentGroundInfo(1)).bonesStaked;
+      console.log(bal.toString());
     });
 
     it("get primary skill", async () => {
@@ -464,8 +469,8 @@ describe("test phase two", () => {
       await increaseTime(24);
       const res = await devGrounds.getDevGroundFeInfo(owner.address);
       expect(res[1].timeLeft.toString()).to.equal("148");
-      expect(res[0].daysStaked.toString()).to.equal("86400");
-      expect(res[1].skillLevel.toString()).to.equal("0");
+      expect(res[0].daysStaked.toString()).to.be.equal("86401");
+      expect(res[1].skillLevel.toString()).to.equal(toWei("0.1"));
       expect(res[0].bonesAccured.toString()).to.equal(toWei("10"));
       expect(res[1].ground).to.equal(1);
       expect(res[0].totalBonesStaked).to.equal(toWei("1000"));

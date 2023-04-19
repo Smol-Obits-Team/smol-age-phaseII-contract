@@ -15,12 +15,12 @@ import {
 contract Consumables is ERC1155Upgradeable, Ownable {
     using StringsUpgradeable for uint256;
 
-    uint256 constant DIRT = 1;
-    uint256 constant HERB = 2;
-    uint256 constant STONES = 3;
-    uint256 constant FERTILE_SOIL = 4;
-    uint256 constant FUNGI = 5;
-    uint256 constant PRECIOUS_MATERIAL = 6;
+    // uint256 constant DIRT = 1;
+    // uint256 constant HERB = 2;
+    // uint256 constant STONES = 3;
+    // uint256 constant FERTILE_SOIL = 4;
+    // uint256 constant FUNGI = 5;
+    // uint256 constant PRECIOUS_MATERIAL = 6;
 
     string public baseUri;
 

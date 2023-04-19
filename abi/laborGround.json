@@ -263,9 +263,10 @@
     "outputs": [
       {
         "components": [
-          { "internalType": "uint128", "name": "timeLeft", "type": "uint128" },
+          { "internalType": "uint64", "name": "timeLeft", "type": "uint64" },
           { "internalType": "uint64", "name": "tokenId", "type": "uint64" },
-          { "internalType": "uint64", "name": "animalId", "type": "uint64" }
+          { "internalType": "uint64", "name": "animalId", "type": "uint64" },
+          { "internalType": "uint64", "name": "supplyId", "type": "uint64" }
         ],
         "internalType": "struct LaborGroundFeInfo[]",
         "name": "",

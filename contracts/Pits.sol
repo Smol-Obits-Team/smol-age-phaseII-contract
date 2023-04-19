@@ -7,10 +7,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     Initializable
 } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {
+    ReentrancyGuardUpgradeable
+} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { BalanceIsInsufficient } from "./library/Error.sol";
 import { Ownable } from "solady/src/auth/Ownable.sol";
 
-contract Pits is Initializable, Ownable {
+contract Pits is Initializable, Ownable, ReentrancyGuardUpgradeable {
     IERC20 public bones;
     uint256 public bonesStaked;
 
@@ -27,9 +30,10 @@ contract Pits is Initializable, Ownable {
         _initializeOwner(msg.sender);
         bones = IERC20(_bones);
         minimumPercent = 3;
+        __ReentrancyGuard_init();
     }
 
-    function stakeBonesInYard(uint256 _amount) external {
+    function stakeBonesInYard(uint256 _amount) external nonReentrant {
         if (bones.balanceOf(msg.sender) < _amount)
             revert BalanceIsInsufficient();
         uint256 bonesBalance = bonesStaked;
@@ -53,7 +57,7 @@ contract Pits is Initializable, Ownable {
         emit StakeBonesInYard(msg.sender, _amount);
     }
 
-    function removeBonesFromYard(uint256 _amount) external {
+    function removeBonesFromYard(uint256 _amount) external nonReentrant {
         if (_amount > balance[msg.sender]) revert BalanceIsInsufficient();
         uint256 bonesBalance = bonesStaked;
         balance[msg.sender] -= _amount;
