@@ -180,7 +180,7 @@ contract LaborGrounds is Initializable, Ownable {
             LaborGround storage labor = laborGround[_tokenId[i]];
             if (labor.owner != msg.sender && labor.animalId != MAX_UINT32)
                 revert NotYourToken();
-            labor.animalId = 0;
+            labor.animalId = MAX_UINT32;
             animals.safeTransferFrom(
                 address(this),
                 msg.sender,
