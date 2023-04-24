@@ -6,10 +6,10 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   const { deployer } = await getNamedAccounts();
   const chainId = network.config.chainId;
 
-  const bones = await ethers.getContract("Token");
   let addr;
 
   if (chainId === 31337 || chainId === 421613) {
+    const bones = await ethers.getContract("Token");
     addr = bones.address;
   } else {
     addr = networkConfig[chainId].bones;

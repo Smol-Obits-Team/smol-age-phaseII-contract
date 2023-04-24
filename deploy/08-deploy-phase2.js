@@ -13,8 +13,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     bonesAddress,
     animalsAddress,
     randomizerAddress;
-  neandersmol = await ethers.getContract("NeanderSmol");
-  bones = await ethers.getContract("Token");
+  // neandersmol = await ethers.getContract("NeanderSmol");
+  // bones = await ethers.getContract("Token");
 
   /**
    * smol - testnet and localhost
@@ -45,9 +45,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   }
 
   pits = await ethers.getContract("Pits");
-  supplies = await ethers.getContract("Supplies");
-  consumables = await ethers.getContract("Consumables");
-
+  // supplies = await ethers.getContract("Supplies");
+  // consumables = await ethers.getContract("Consumables");
+// 0x409D8139Bf35528235EE020A80760969a66724Dd
+// 0x6a49Ed246748D0B81A8a6f3362BD673774354B2C
+// 0x17f75a8cF862d3CbC44725B3DdAb05aD2723922D
   try {
     await deploy("DevelopmentGrounds", {
       from: deployer,
@@ -77,28 +79,28 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
       },
       log: true,
     });
-    await deploy("LaborGrounds", {
-      from: deployer,
+    // await deploy("LaborGrounds", {
+    //   from: deployer,
 
-      proxy: {
-        owner: deployer,
-        proxyContract: "OpenZeppelinTransparentProxy",
-        execute: {
-          init: {
-            methodName: "initialize",
-            args: [
-              pits.address,
-              animalsAddress,
-              supplies.address,
-              consumables.address,
-              neandersmolAddress,
-              randomizerAddress,
-            ],
-          },
-        },
-      },
-      log: true,
-    });
+    //   proxy: {
+    //     owner: deployer,
+    //     proxyContract: "OpenZeppelinTransparentProxy",
+    //     execute: {
+    //       init: {
+    //         methodName: "initialize",
+    //         args: [
+    //           pits.address,
+    //           animalsAddress,
+    //           supplies.address,
+    //           consumables.address,
+    //           neandersmolAddress,
+    //           randomizerAddress,
+    //         ],
+    //       },
+    //     },
+    //   },
+    //   log: true,
+    // });
   } catch (e) {
     console.log(e);
   }

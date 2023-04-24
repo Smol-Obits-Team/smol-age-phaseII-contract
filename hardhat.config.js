@@ -8,10 +8,11 @@ require("@nomiclabs/hardhat-etherscan");
 require("@openzeppelin/hardhat-upgrades");
 
 const ARBITRUM_GOERLI_RPC = process.env.ARBITRUM_GOERLI_RPC || "";
-const ARBITRUM_RPC_URL = process.env.ARBISCAN_RPC_URL || "";
+const ARBITRUM_RPC_URL = process.env.ARBITRUM_RPC_URL || "";
 const ARBISCAN_API_KEY = process.env.ARBISCAN_API_KEY || "";
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const PRIVATE_KEY_0 = process.env.PRIVATE_KEY_0;
+const PRIVATE_KEY_1 = process.env.PRIVATE_KEY_1;
 const REPORT_GAS = process.env.REPORT_GAS || true;
 
 module.exports = {
@@ -26,14 +27,14 @@ module.exports = {
     },
     arbitrumgoerli: {
       url: ARBITRUM_GOERLI_RPC,
-      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
+      accounts: PRIVATE_KEY_0 !== undefined ? [PRIVATE_KEY_0] : [],
       saveDeployments: true,
       chainId: 421613,
       blockConfirmations: 6,
     },
     arbitrum: {
       url: ARBITRUM_RPC_URL,
-      accounts: PRIVATE_KEY !== undefined ? [PRIVATE_KEY] : [],
+      accounts: PRIVATE_KEY_1 !== undefined ? [PRIVATE_KEY_1] : [],
       saveDeployments: true,
       chainId: 42161,
       blockConfirmations: 6,
