@@ -24,7 +24,7 @@ contract Consumables is ERC1155Upgradeable, Ownable {
 
     string public baseUri;
 
-    mapping(address => bool) allowedTo;
+    mapping(address => bool) public allowedTo;
 
     function initialize(string memory _baseUri) external initializer {
         _initializeOwner(msg.sender);

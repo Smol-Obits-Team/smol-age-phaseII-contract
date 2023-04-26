@@ -9,11 +9,10 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
   let bonesAddress, treasureAddress, magicAddress;
 
-  const bones = await ethers.getContract("Token");
-  const treasure = await ethers.getContract("mERC1155");
-  const magic = await ethers.getContract("mERC20");
-
   if (chainId === 31337 || chainId === 421613) {
+    const bones = await ethers.getContract("Token");
+    const treasure = await ethers.getContract("mERC1155");
+    const magic = await ethers.getContract("mERC20");
     bonesAddress = bones.address;
     treasureAddress = treasure.address;
     magicAddress = magic.address;

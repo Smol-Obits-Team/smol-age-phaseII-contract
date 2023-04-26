@@ -27,9 +27,9 @@ contract Supplies is ERC1155Upgradeable, Ownable {
     address public bones;
     address public magic;
 
-    uint256 constant MAGIC_PRICE = 10 ether;
-    uint256 constant BONES_PRICE = 1000 ether;
-    uint256 constant TREASURE_MOONROCK_VALUE = 5;
+    uint256 public constant MAGIC_PRICE = 10 ether;
+    uint256 public constant BONES_PRICE = 1000 ether;
+    uint256 public constant TREASURE_MOONROCK_VALUE = 5;
 
     // uint256 constant SHOVEL = 1;
     // uint256 constant SATCHEL = 2;
