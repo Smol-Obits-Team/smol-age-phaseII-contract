@@ -2,4 +2,9 @@
     "name": "Stone",
     "image": "ipfs://QmWRBV6csRpSAtNn4udcbKoTEKzkmZmpBduVeHiL4qNe7D/3",
     "description": "Consumables are found by completing jobs within the Smol Age"
+    "attributes": [
+    {
+      "trait_type": "Rarity",
+      "value": "Common"
+    }
 }
