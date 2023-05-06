@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/MerkleProofUpgradeable.sol";
 
 error TokenIsStaked();
+error InvalidSkillLevel();
 
 contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     using StringsUpgradeable for uint256;
@@ -41,6 +42,8 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     mapping(uint256 => PrimarySkill) private tokenToSkill;
     mapping(uint256 => bool) public staked;
     mapping(uint256 => uint256) public commonSense;
+
+    mapping(uint256 => uint256[]) public addonsEnabled;
 
     mapping(address => bool) private minted;
     mapping(address => uint256) private publicMinted;
@@ -188,10 +191,40 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
         require(magic.transfer(msg.sender, magic.balanceOf(address(this))));
     }
 
+    function setEnabledAddons(uint256 tokenId, uint32[] addonIds) external {
+        // require that the setter is the owner of the tokenId
+        require(ownerOf(tokenId) == msg.sender, "Only the owner can set addons");
+
+        // Addons from 0 to 99 are for mystic
+        // Addons from 100 to 199 are for farmer
+        // Addons from 200 to 300 are for fighter
+
+        // Get the level of the skills
+        uint256 mystics = tokenToSkill[tokenId].mystics;
+        uint256 farmers = tokenToSkill[tokenId].farmers;
+        uint256 fighters = tokenToSkill[tokenId].fighters;
+
+        // Check if they have level 100 of the skill that is required for the addon
+        for (uint256 i = 0; i < addonIds.length; i++) {
+            uint256 addonId = addonIds[i];
+            if (addonId < 100 && mystics < 100) {
+                revert InvalidSkillLevel();
+            } else if (addonId >= 100 && addonId < 200 && farmers < 100) {
+                revert InvalidSkillLevel();
+            } else if (addonId >= 200 && addonId < 300 && fighters < 100) {
+                revert InvalidSkillLevel();
+            }
+        }
+
+        addonsEnabled[tokenId] = addonIds;
+        emit SetEnabledAddon(tokenId, addonIds);
+    }
+
     event StakeState(uint256 indexed tokenId, bool state);
     event MysticsSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);
     event FarmerSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);
     event FightersSkillUpdated(uint256 indexed tokenId, uint256 indexed amount);
+    event SetEnabledAddons(uint256 indexed tokenId, uint32[] indexed addonIds);
 }
 
 interface IERC20 {
