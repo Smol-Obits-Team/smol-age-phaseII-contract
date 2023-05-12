@@ -13,8 +13,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     bonesAddress,
     animalsAddress,
     randomizerAddress;
-  // neandersmol = await ethers.getContract("NeanderSmol");
-  // bones = await ethers.getContract("Token");
+  neandersmol = await ethers.getContract("NeanderSmol");
+  bones = await ethers.getContract("Token");
 
   /**
    * smol - testnet and localhost
@@ -32,8 +32,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     randomizerAddress = randomizer.address;
   }
   if (chainId === 421613) {
-    neandersmolAddress = neandersmol.address;
-    bonesAddress = bones.address;
+    neandersmolAddress = networkConfig[chainId].neandersmol;
+    bonesAddress = networkConfig[chainId].bones;
     animalsAddress = networkConfig[chainId].animals;
     randomizerAddress = networkConfig[chainId].randomizer;
   }
@@ -48,35 +48,34 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
   supplies = await ethers.getContract("Supplies");
   consumables = await ethers.getContract("Consumables");
   try {
-    // await deploy("DevelopmentGrounds", {
-    //   from: deployer,
-    //   proxy: {
-    //     owner: deployer,
-    //     proxyContract: "OpenZeppelinTransparentProxy",
-    //     execute: {
-    //       init: {
-    //         methodName: "initialize",
-    //         args: [pits.address, neandersmolAddress, bonesAddress],
-    //       },
-    //     },
-    //   },
-    //   log: true,
-    // });
-    // await deploy("Caves", {
-    //   from: deployer,
-    //   proxy: {
-    //     owner: deployer,
-    //     proxyContract: "OpenZeppelinTransparentProxy",
-    //     execute: {
-    //       init: {
-    //         methodName: "initialize",
-    //         args: [pits.address, bonesAddress, neandersmolAddress],
-    //       },
-    //     },
-    //   },
-    //   log: true,
-    // });
-
+    await deploy("DevelopmentGrounds", {
+      from: deployer,
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [pits.address, neandersmolAddress, bonesAddress],
+          },
+        },
+      },
+      log: true,
+    });
+    await deploy("Caves", {
+      from: deployer,
+      proxy: {
+        owner: deployer,
+        proxyContract: "OpenZeppelinTransparentProxy",
+        execute: {
+          init: {
+            methodName: "initialize",
+            args: [pits.address, bonesAddress, neandersmolAddress],
+          },
+        },
+      },
+      log: true,
+    });
 
     await deploy("LaborGrounds", {
       from: deployer,

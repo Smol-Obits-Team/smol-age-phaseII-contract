@@ -62,7 +62,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
 
     function setAddress(
         address _pits,
-        address _neandersmol,
+        address _neandersmol, 
         address _bones
     ) public onlyOwner {
         bones = IBones(_bones);
@@ -398,7 +398,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
     ) public view returns (uint256) {
         DevelopmentGround memory devGround = developmentGround[_tokenId];
         return
-            Lib.getDevelopmentGroundBonesReward(
+            Lib.getDevGroundBonesReward(
                 devGround.currentPitsLockPeriod,
                 devGround.lockPeriod,
                 devGround.lastRewardTime,

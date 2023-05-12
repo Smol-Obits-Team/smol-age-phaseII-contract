@@ -106,6 +106,11 @@ contract Supplies is ERC1155Upgradeable, Ownable {
         super.setApprovalForAll(operator, approved);
     }
 
+    function burn(address _from, uint256 _id, uint256 _amount) external {
+        if (msg.sender != laborGround) revert NotAuthorized();
+        _burn(_from, _id, _amount);
+    }
+
     function name() external pure returns (string memory) {
         return "Supplies";
     }
