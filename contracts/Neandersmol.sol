@@ -39,11 +39,19 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
         uint256 fighters;
     }
 
+    struct Addons {
+        uint256 hand;
+        uint256 hat;
+        uint256 mask;
+        uint256 special;
+    }
+
     mapping(uint256 => PrimarySkill) private tokenToSkill;
     mapping(uint256 => bool) public staked;
     mapping(uint256 => uint256) public commonSense;
 
-    mapping(uint256 => uint256[]) public addonsEnabled;
+    mapping(uint256 => Addons) public addonsEnabled;
+
 
     mapping(address => bool) private minted;
     mapping(address => uint256) private publicMinted;
@@ -191,10 +199,11 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
         require(magic.transfer(msg.sender, magic.balanceOf(address(this))));
     }
 
-    function setEnabledAddons(uint256 tokenId, uint32[] addonIds) external {
+    function setEnabledAddons(uint256 tokenId, uint32[] addons) external {
         // require that the setter is the owner of the tokenId
         require(ownerOf(tokenId) == msg.sender, "Only the owner can set addons");
 
+        // Addons is an array of 4 uint32 (hand, hat, mask, special)
         // Addons from 0 to 99 are for mystic
         // Addons from 100 to 199 are for farmer
         // Addons from 200 to 300 are for fighter
@@ -216,7 +225,11 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
             }
         }
 
-        addonsEnabled[tokenId] = addonIds;
+        addonsEnabled[tokenId].hand = addons[0];
+        addonsEnabled[tokenId].hat = addons[1];
+        addonsEnabled[tokenId].mask = addons[2];
+        addonsEnabled[tokenId].special = addons[3];
+        
         emit SetEnabledAddon(tokenId, addonIds);
     }
 
