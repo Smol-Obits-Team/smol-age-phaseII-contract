@@ -178,8 +178,6 @@ contract LaborGrounds is Initializable, Ownable {
         for (; i < _tokenId.length; ++i) {
             LaborGround memory labor = laborGround[_tokenId[i]];
             uint256 animalsId = labor.animalId;
-            // You are not the owner
-            // you have sth staked
             if (labor.owner != msg.sender || animalsId == MAX_UINT32)
                 revert NotYourToken();
             laborGround[_tokenId[i]].animalId = MAX_UINT32;
@@ -206,16 +204,21 @@ contract LaborGrounds is Initializable, Ownable {
      * @param _tokenId The id of the labor ground token being claimed.
      */
 
-    function claimCollectable(uint256 _tokenId) internal {
+    function claimCollectable(uint256 _tokenId) internal returns (bool) {
         LaborGround memory labor = laborGround[_tokenId];
         if (msg.sender != labor.owner) revert NotYourToken();
         if (block.timestamp < labor.lockTime + 3 days) revert CannotClaimNow();
-        uint256 consumablesTokenId = checkPossibleClaims(_tokenId, labor);
+        (uint256 consumablesTokenId, bool broken) = checkPossibleClaims(
+            _tokenId,
+            labor
+        );
         if (consumablesTokenId != 0)
             consumables.mint(msg.sender, consumablesTokenId, 1);
 
         laborGround[_tokenId].lockTime = uint32(block.timestamp);
         emit ClaimCollectable(msg.sender, _tokenId);
+
+        return broken;
     }
 
     /** 
@@ -232,17 +235,45 @@ contract LaborGrounds is Initializable, Ownable {
      * @param _supplyId ID of the supply.
      */
 
-    //   max = 3;
-    //   min = 2;
     function breakOrFailed(
         uint256 _tokenId,
         uint256 _supplyId,
         uint256 _random
-    ) internal {
+    ) internal returns (bool) {
         if (_random == 0) {
             ISupplies(address(supplies)).burn(msg.sender, _supplyId, 1);
-            laborGround[_tokenId].supplyId = 0;
+            leaveLg(_tokenId);
+            return true;
+        } else {
+            return false;
         }
+    }
+
+    function leaveLg(uint256 _tokenId) internal {
+        LaborGround memory labor = laborGround[_tokenId];
+        if (labor.owner != msg.sender) revert NotYourToken();
+        delete laborGround[_tokenId];
+        Lib.removeItem(ownerToTokens[msg.sender], _tokenId);
+        if (labor.animalId != MAX_UINT32)
+            animals.safeTransferFrom(
+                address(this),
+                msg.sender,
+                labor.animalId,
+                1,
+                ""
+            );
+
+        if (labor.supplyId != 0)
+            supplies.safeTransferFrom(
+                address(this),
+                msg.sender,
+                labor.supplyId,
+                1,
+                ""
+            );
+        if (neandersmol.staked(_tokenId))
+            neandersmol.stakingHandler(_tokenId, false);
+        emit LeaveLaborGround(msg.sender, _tokenId);
     }
 
     /**
@@ -255,29 +286,7 @@ contract LaborGrounds is Initializable, Ownable {
 
         for (; i < _tokenId.length; ++i) {
             uint256 tokenId = _tokenId[i];
-            claimCollectable(tokenId);
-            LaborGround memory labor = laborGround[tokenId];
-            delete laborGround[tokenId];
-            Lib.removeItem(ownerToTokens[msg.sender], tokenId);
-            if (labor.animalId != MAX_UINT32)
-                animals.safeTransferFrom(
-                    address(this),
-                    msg.sender,
-                    labor.animalId,
-                    1,
-                    ""
-                );
-
-            if (labor.supplyId != 0)
-                supplies.safeTransferFrom(
-                    address(this),
-                    msg.sender,
-                    labor.supplyId,
-                    1,
-                    ""
-                );
-            neandersmol.stakingHandler(tokenId, false);
-            emit LeaveLaborGround(msg.sender, tokenId);
+            if (!claimCollectable(tokenId)) leaveLg(tokenId);
         }
     }
 
@@ -291,7 +300,7 @@ contract LaborGrounds is Initializable, Ownable {
     function checkPossibleClaims(
         uint256 _tokenId,
         LaborGround memory labor
-    ) internal returns (uint256) {
+    ) internal returns (uint256, bool) {
         uint256 rnd = randomizer.revealRandomNumber(labor.requestId) % 101;
         uint256 animalId = labor.animalId;
         uint256 consumablesTokenId;
@@ -330,12 +339,12 @@ contract LaborGrounds is Initializable, Ownable {
             } else if (rnd > 70 && rnd < 96) {
                 consumablesTokenId = tokenTwo;
             } else {
-                return 0;
+                return (0, false);
             }
         }
-
+        bool broken;
         if (breakTool)
-            breakOrFailed(
+            broken = breakOrFailed(
                 _tokenId,
                 labor.supplyId,
                 randomizer.revealRandomNumber(labor.requestId) % 2
@@ -347,7 +356,7 @@ contract LaborGrounds is Initializable, Ownable {
 
         if (animalId == 5) consumablesTokenId = rnd < 61 ? tokenOne : tokenTwo;
 
-        return consumablesTokenId;
+        return (consumablesTokenId, broken);
     }
 
     /**
