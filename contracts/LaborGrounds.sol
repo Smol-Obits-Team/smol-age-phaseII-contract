@@ -241,6 +241,7 @@ contract LaborGrounds is Initializable, Ownable {
         uint256 _random
     ) internal returns (bool) {
         if (_random == 0) {
+            laborGround[_tokenId].supplyId = 0;
             ISupplies(address(supplies)).burn(msg.sender, _supplyId, 1);
             leaveLg(_tokenId);
             return true;
