@@ -111,6 +111,10 @@ contract Supplies is ERC1155Upgradeable, Ownable {
         _burn(_from, _id, _amount);
     }
 
+    function setBaseUri(string memory _baseUri) external onlyOwner {
+        baseUri = _baseUri;
+    }
+
     function name() external pure returns (string memory) {
         return "Supplies";
     }
