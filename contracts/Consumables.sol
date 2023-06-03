@@ -48,6 +48,10 @@ contract Consumables is ERC1155Upgradeable, Ownable {
         return "consumables";
     }
 
+    function setBaseUri(string memory _baseUri) external onlyOwner {
+        baseUri = _baseUri;
+    }
+
     function uri(
         uint256 _tokenId
     ) public view override returns (string memory) {

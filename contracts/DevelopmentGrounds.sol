@@ -259,6 +259,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
      */
 
     function removeSingleBones(uint256 _tokenId, uint256 _pos) external {
+        if (_pos == 0) revert InvalidPos();
         DevelopmentGround memory devGround = developmentGround[_tokenId];
         if (devGround.owner != msg.sender) revert NotYourToken();
         if (devGround.amountPosition < _pos) revert InvalidPos();
@@ -276,13 +277,15 @@ contract DevelopmentGrounds is Initializable, Ownable {
             ? trackTime[_tokenId][_pos] = 0
             : trackTime[_tokenId][_pos] = trackTime[_tokenId][_pos + 1];
         trackToken[_tokenId][time] = 0;
+        developmentGround[_tokenId].bonesStaked -= initialAmount;
         developmentGround[_tokenId].amountPosition -= 1;
+
         uint256 bal = initialAmount - amount;
 
         if (bal != 0) bones.burn(address(this), bal);
 
-        if (amount != 0)
-            SafeTransferLib.safeTransfer(address(bones), msg.sender, bal);
+        if (amount == 0) revert ZeroBalanceError();
+        SafeTransferLib.safeTransfer(address(bones), msg.sender, amount);
         emit RemoveBones(msg.sender, _tokenId, amount);
     }
 
@@ -398,7 +401,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
     ) public view returns (uint256) {
         DevelopmentGround memory devGround = developmentGround[_tokenId];
         return
-            Lib.getDevelopmentGroundBonesReward(
+            Lib.getDevGroundBonesReward(
                 devGround.currentPitsLockPeriod,
                 devGround.lockPeriod,
                 devGround.lastRewardTime,
