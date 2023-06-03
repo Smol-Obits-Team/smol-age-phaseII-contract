@@ -1,10 +1,11 @@
 {
-    "name": "Fungi",
-    "image": "ipfs://QmWRBV6csRpSAtNn4udcbKoTEKzkmZmpBduVeHiL4qNe7D/5",
-    "description": "Consumables are found by completing jobs within the Smol Age"
-    "attributes": [
+  "name": "Fungi",
+  "image": "ipfs://QmWRBV6csRpSAtNn4udcbKoTEKzkmZmpBduVeHiL4qNe7D/5",
+  "description": "Consumables are found by completing jobs within the Smol Age",
+  "attributes": [
     {
       "trait_type": "Rarity",
       "value": "Rare"
     }
+  ]
 }
