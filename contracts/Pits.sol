@@ -36,7 +36,6 @@ contract Pits is Initializable, Ownable, ReentrancyGuardUpgradeable {
     function stakeBonesInYard(uint256 _amount) external nonReentrant {
         if (bones.balanceOf(msg.sender) < _amount)
             revert BalanceIsInsufficient();
-        uint256 bonesBalance = bonesStaked;
         SafeTransferLib.safeTransferFrom(
             address(bones),
             msg.sender,
@@ -45,29 +44,19 @@ contract Pits is Initializable, Ownable, ReentrancyGuardUpgradeable {
         );
         balance[msg.sender] += _amount;
         bonesStaked += _amount;
-        if (bonesBalance < minimumBonesRequired() && validation()) {
-            uint256 daysOut;
-            timeOut == 0 ? daysOut = 0 : daysOut =
-                (block.timestamp - timeOut) /
-                1 days;
-            trackDaysOff[timeOut] = daysOut;
-            totalDaysOff += daysOut;
-        }
 
         emit StakeBonesInYard(msg.sender, _amount);
     }
 
     function removeBonesFromYard(uint256 _amount) external nonReentrant {
         if (_amount > balance[msg.sender]) revert BalanceIsInsufficient();
-        uint256 bonesBalance = bonesStaked;
         balance[msg.sender] -= _amount;
         bonesStaked -= _amount;
         /**
          * The balance before was greater than the minimum
          * and now it is smaller than it
          */
-        if (bonesBalance >= minimumBonesRequired() && !validation())
-            timeOut = block.timestamp;
+
         SafeTransferLib.safeTransfer(address(bones), msg.sender, _amount);
         emit RemoveBonesFromYard(msg.sender, _amount);
     }
