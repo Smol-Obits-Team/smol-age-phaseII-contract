@@ -52,11 +52,6 @@ contract Pits is Initializable, Ownable, ReentrancyGuardUpgradeable {
         if (_amount > balance[msg.sender]) revert BalanceIsInsufficient();
         balance[msg.sender] -= _amount;
         bonesStaked -= _amount;
-        /**
-         * The balance before was greater than the minimum
-         * and now it is smaller than it
-         */
-
         SafeTransferLib.safeTransfer(address(bones), msg.sender, _amount);
         emit RemoveBonesFromYard(msg.sender, _amount);
     }

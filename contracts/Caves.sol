@@ -121,7 +121,6 @@ contract Caves is Initializable, Ownable {
      */
 
     function getCavesReward(uint256 _tokenId) public view returns (uint256) {
-        // Prevent users from claiming any how
         Cave memory cave = caves[_tokenId];
         uint256 boost = fetchBoost(cave.owner);
         if (cave.lastRewardTimestamp == 0) return 0;
@@ -129,21 +128,18 @@ contract Caves is Initializable, Ownable {
             (10 ** 19 + boost));
     }
 
-    // 5000-9999 -
-    // 10000-19999
-    // 20000-29999
-    // 30000-39999
-    // 40000-49999
-
     function fetchBoost(address _owner) internal view returns (uint256 a) {
-        uint256 toWei = 10 ** 18;
-        uint256 min = 5000 * toWei;
         uint256 stakedBones = pits.getBonesStaked(_owner);
-        if (stakedBones < min) return 0;
-        if (stakedBones > 4999 * toWei && stakedBones < 10000 * toWei)
-            return 1 ether;
-        uint256 n = ((stakedBones - 10000) / 10000) + 1;
-        return 10 ** 17 * 5 * (2 + n);
+        if (stakedBones < 5000 ether) return 0;
+        if (stakedBones < 10000 ether) return 1 ether;
+        else if (stakedBones < 20000 ether) return 1.5 ether;
+        else if (stakedBones < 30000 ether) return 2 ether;
+        else if (stakedBones < 40000 ether) return 2.5 ether;
+        else if (stakedBones < 50000 ether) return 3 ether;
+        else if (stakedBones < 100000 ether) return 3.5 ether;
+        else if (stakedBones < 250000 ether) return 4 ether;
+        else if (stakedBones < 500000 ether) return 4.5 ether;
+        else if (stakedBones > 499999 ether) return 5 ether;
     }
 
     /**

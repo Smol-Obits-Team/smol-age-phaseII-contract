@@ -6,25 +6,21 @@ import { DevelopmentGroundIsLocked } from "./Error.sol";
 
 library Lib {
     function getDevGroundBonesReward(
-        uint256 _currentLockPeriod,
         uint256 _lockPeriod,
         uint256 _lastRewardTime,
         IPits _pits
     ) internal view returns (uint256) {
         if (_lockPeriod == 0) return 0;
         uint256 rewardRate = getRewardRate(_lockPeriod);
-
+        if (_lastRewardTime == 0) return 0;
         uint256 time = (block.timestamp - _lastRewardTime) / 1 days;
-
         if (time == 0) return 0;
-        uint256 toBeRomoved = calculateFinalReward(_currentLockPeriod, _pits);
-        return ((rewardRate * time) - (toBeRomoved * rewardRate)) * 10 ** 18;
+        return ((rewardRate * 10 ** 18) + fetchBoost(msg.sender, _pits)) * time;
     }
 
     function calculatePrimarySkill(
         uint256 _bonesStaked,
         uint256 _amountPosition,
-        uint256 _currentLockPeriod,
         uint256 _tokenId,
         IPits _pits,
         mapping(uint256 => mapping(uint256 => uint256)) storage trackTime,
@@ -36,44 +32,31 @@ library Lib {
         for (; i <= _amountPosition; ) {
             uint256 time = (block.timestamp - trackTime[_tokenId][i]) / 1 days;
             uint256 stakedAmount = trackToken[_tokenId][trackTime[_tokenId][i]];
-            amount += (time * stakedAmount);
+            amount += (time *
+                (stakedAmount + (fetchBoost(msg.sender, _pits)) * 100));
             unchecked {
                 ++i;
             }
         }
-        uint256 toBeRemoved = calculateFinalReward(_currentLockPeriod, _pits);
-        return (amount - (toBeRemoved * 10 ** 21)) / 10 ** 4;
+
+        return amount / 10 ** 4;
     }
 
-    function calculateFinalReward(
-        uint256 /* _currentLockPeriod*/,
-        IPits /*_pits*/
-    ) internal view returns (uint256) {
-        return 0;
-        // if (_currentLockPeriod == 0) {
-        //     console.log(_currentLockPeriod);
-        //     if (_pits.getTotalDaysOff() == 0) {
-        //         return
-        //             _pits.getTimeOut() == 0
-        //                 ? 0
-        //                 : (block.timestamp - _pits.getTimeOut()) / 1 days;
-        //     } else {
-        //         return _pits.getTotalDaysOff();
-        //     }
-        // } else {
-        //     uint256 howLong = (block.timestamp - _pits.getTimeOut()) / 1 days;
-
-        //     if (_pits.getTotalDaysOff() == 0) {
-        //         return 0;
-        //     } else {
-        //         return
-        //             _pits.getTimeOut() == _currentLockPeriod &&
-        //                 _pits.validation()
-        //                 ? 0
-        //                 : (_pits.getTotalDaysOff() -
-        //                     (_pits.getDaysOff(_currentLockPeriod) + howLong));
-        //     }
-        // }
+    function fetchBoost(
+        address _owner,
+        IPits _pits
+    ) internal view returns (uint256 a) {
+        uint256 stakedBones = _pits.getBonesStaked(_owner);
+        if (stakedBones < 5000 ether) return 0;
+        if (stakedBones < 10000 ether) return 1 ether;
+        else if (stakedBones < 20000 ether) return 1.5 ether;
+        else if (stakedBones < 30000 ether) return 2 ether;
+        else if (stakedBones < 40000 ether) return 2.5 ether;
+        else if (stakedBones < 50000 ether) return 3 ether;
+        else if (stakedBones < 100000 ether) return 3.5 ether;
+        else if (stakedBones < 250000 ether) return 4 ether;
+        else if (stakedBones < 500000 ether) return 4.5 ether;
+        else if (stakedBones > 499999 ether) return 5 ether;
     }
 
     function getRewardRate(

@@ -323,7 +323,6 @@ contract DevelopmentGrounds is Initializable, Ownable {
             Lib.calculatePrimarySkill(
                 token.bonesStaked,
                 token.amountPosition,
-                token.currentPitsLockPeriod,
                 _tokenId,
                 pits,
                 trackTime,
@@ -402,7 +401,6 @@ contract DevelopmentGrounds is Initializable, Ownable {
         DevelopmentGround memory devGround = developmentGround[_tokenId];
         return
             Lib.getDevGroundBonesReward(
-                devGround.currentPitsLockPeriod,
                 devGround.lockPeriod,
                 devGround.lastRewardTime,
                 pits
