@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { Lib } from "./library/Lib.sol";
+import { Remove } from "./library/Remove.sol";
 import { IBones } from "./interfaces/IBones.sol";
 import { Cave, CavesFeInfo } from "./library/StructsEnums.sol";
 import { IPits } from "./interfaces/IPits.sol";
@@ -13,7 +13,8 @@ import {
     NotYourToken,
     NeandersmolsIsLocked,
     ZeroBalanceError,
-    TokenIsStaked
+    TokenIsStaked,
+    GroundIsLocked
 } from "./library/Error.sol";
 
 import {
@@ -54,7 +55,7 @@ contract Caves is Initializable, Ownable {
      */
 
     function enterCaves(uint256[] calldata _tokenId) external {
-        Lib.pitsValidation(pits);
+        if (!pits.validation()) revert GroundIsLocked();
         uint256 i;
         for (; i < _tokenId.length; ++i) {
             uint256 tokenId = _tokenId[i];
@@ -85,7 +86,7 @@ contract Caves is Initializable, Ownable {
             if (100 days + cave.stakingTime > block.timestamp)
                 revert NeandersmolsIsLocked();
             if (getCavesReward(tokenId) != 0) claimCaveReward(tokenId);
-            Lib.removeItem(ownerToTokens[msg.sender], tokenId);
+            Remove.removeItem(ownerToTokens[msg.sender], tokenId);
             delete caves[tokenId];
             neandersmol.stakingHandler(tokenId, false);
             emit LeaveCave(msg.sender, tokenId);
@@ -128,18 +129,28 @@ contract Caves is Initializable, Ownable {
             (10 ** 19 + boost));
     }
 
-    function fetchBoost(address _owner) internal view returns (uint256 a) {
+    function fetchBoost(address _owner) internal view returns (uint256 b) {
         uint256 stakedBones = pits.getBonesStaked(_owner);
         if (stakedBones < 5000 ether) return 0;
-        if (stakedBones < 10000 ether) return 1 ether;
-        else if (stakedBones < 20000 ether) return 1.5 ether;
-        else if (stakedBones < 30000 ether) return 2 ether;
-        else if (stakedBones < 40000 ether) return 2.5 ether;
-        else if (stakedBones < 50000 ether) return 3 ether;
-        else if (stakedBones < 100000 ether) return 3.5 ether;
-        else if (stakedBones < 250000 ether) return 4 ether;
-        else if (stakedBones < 500000 ether) return 4.5 ether;
-        else if (stakedBones > 499999 ether) return 5 ether;
+        if (stakedBones < 10000 ether) {
+            return 1 ether;
+        } else if (stakedBones < 20000 ether) {
+            return 1.5 ether;
+        } else if (stakedBones < 30000 ether) {
+            return 2 ether;
+        } else if (stakedBones < 40000 ether) {
+            return 2.5 ether;
+        } else if (stakedBones < 50000 ether) {
+            return 3 ether;
+        } else if (stakedBones < 100000 ether) {
+            return 3.5 ether;
+        } else if (stakedBones < 250000 ether) {
+            return 4 ether;
+        } else if (stakedBones < 500000 ether) {
+            return 4.5 ether;
+        } else if (stakedBones > 499999 ether) {
+            return 5 ether;
+        }
     }
 
     /**

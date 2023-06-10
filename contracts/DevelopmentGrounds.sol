@@ -1,7 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { Lib } from "./library/Lib.sol";
+import "hardhat/console.sol";
+import { Remove } from "./library/Remove.sol";
 import { IPits } from "./interfaces/IPits.sol";
 import { IBones } from "./interfaces/IBones.sol";
 import { IRandomizer } from "./interfaces/IRandomizer.sol";
@@ -86,7 +87,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
         uint256 i;
         checkLength(_tokenId, _lockTime);
         if (_lockTime.length != _ground.length) revert LengthsNotEqual();
-        Lib.pitsValidation(pits);
+        if (!pits.validation()) revert DevelopmentGroundIsLocked();
         for (; i < _tokenId.length; ++i) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             if (neandersmol.staked(tokenId)) revert TokenIsStaked();
@@ -126,7 +127,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
         uint256[] calldata _amount,
         uint256[] calldata _tokenId
     ) external {
-        Lib.pitsValidation(pits);
+        if (!pits.validation()) revert DevelopmentGroundIsLocked();
         checkLength(_amount, _tokenId);
         uint256 i;
         for (; i < _amount.length; ++i) {
@@ -320,13 +321,11 @@ contract DevelopmentGrounds is Initializable, Ownable {
         DevelopmentGround memory token = developmentGround[_tokenId];
 
         return
-            Lib.calculatePrimarySkill(
+            calculatePrimarySkill(
+                token.owner,
                 token.bonesStaked,
                 token.amountPosition,
-                _tokenId,
-                pits,
-                trackTime,
-                trackToken
+                _tokenId
             );
     }
 
@@ -368,6 +367,96 @@ contract DevelopmentGrounds is Initializable, Ownable {
     }
 
     /**
+     * @dev Returns the DevGround Bones reward based on the lock period, last reward time, and owner's address.
+     * @param _lockPeriod The duration of the lock period.
+     * @param _lastRewardTime The timestamp of the last reward.
+     * @param _owner The address of the owner.
+     * @return The DevGround Bones reward.
+     */
+
+    function getDevGroundBonesReward(
+        uint256 _lockPeriod,
+        uint256 _lastRewardTime,
+        address _owner
+    ) internal view returns (uint256) {
+        if (_lockPeriod == 0) return 0;
+        uint256 rewardRate = getRewardRate(_lockPeriod);
+        if (_lastRewardTime == 0) return 0;
+        uint256 time = (block.timestamp - _lastRewardTime) / 1 days;
+        if (time == 0) return 0;
+        return ((rewardRate * 10 ** 18) + fetchBoost(_owner)) * time;
+    }
+
+    /**
+     * @dev Calculates the primary skill based on the owner's address, staked bones, amount position, and token ID.
+     * @param _owner The address of the owner.
+     * @param _bonesStaked The amount of bones staked.
+     * @param _amountPosition The position amount.
+     * @param _tokenId The token ID.
+     * @return The calculated primary skill.
+     */
+
+    function calculatePrimarySkill(
+        address _owner,
+        uint256 _bonesStaked,
+        uint256 _amountPosition,
+        uint256 _tokenId
+    ) internal view returns (uint256) {
+        if (_bonesStaked == 0) return 0;
+        uint256 amount;
+        uint256 i = 1;
+        for (; i <= _amountPosition; ) {
+            uint256 time = (block.timestamp - trackTime[_tokenId][i]) / 1 days;
+            uint256 stakedAmount = trackToken[_tokenId][trackTime[_tokenId][i]];
+            amount += (time * (stakedAmount));
+            unchecked {
+                ++i;
+            }
+        }
+        return ((amount / 10 ** 4) +
+            (amount / 10 ** 21) *
+            (fetchBoost(_owner) / 100));
+    }
+
+    /**
+     * @dev Retrieves the boost based on the owner's address.
+     * @param _owner The address of the owner.
+     * @return b The boost value.
+     */
+
+    function fetchBoost(address _owner) internal view returns (uint256 b) {
+        uint256 stakedBones = pits.getBonesStaked(_owner);
+        if (stakedBones < 5000 ether) return 0;
+        if (stakedBones < 10000 ether) {
+            return 1 ether;
+        } else if (stakedBones < 20000 ether) {
+            return 1.5 ether;
+        } else if (stakedBones < 30000 ether) {
+            return 2 ether;
+        } else if (stakedBones < 40000 ether) {
+            return 2.5 ether;
+        } else if (stakedBones < 50000 ether) {
+            return 3 ether;
+        } else if (stakedBones < 100000 ether) {
+            return 3.5 ether;
+        } else if (stakedBones < 250000 ether) {
+            return 4 ether;
+        } else if (stakedBones < 500000 ether) {
+            return 4.5 ether;
+        } else if (stakedBones > 499999 ether) {
+            return 5 ether;
+        }
+    }
+
+    function getRewardRate(
+        uint _lockTime
+    ) internal pure returns (uint256 rewardRate) {
+        if (_lockTime == 50 days) rewardRate = 10;
+        if (_lockTime == 100 days) rewardRate = 50;
+        if (_lockTime == 150 days) rewardRate = 100;
+    }
+
+    /**
      * @dev Stakes the specified amount of Bones in the Development Ground of the specified token ID.
      * @param _tokenId The ID of the Neandersmol token that represents the Development Ground.
      * @param _amount The amount of Bones to be staked.
@@ -400,10 +489,10 @@ contract DevelopmentGrounds is Initializable, Ownable {
     ) public view returns (uint256) {
         DevelopmentGround memory devGround = developmentGround[_tokenId];
         return
-            Lib.getDevGroundBonesReward(
+            getDevGroundBonesReward(
                 devGround.lockPeriod,
                 devGround.lastRewardTime,
-                pits
+                devGround.owner
             );
     }
 
@@ -430,7 +519,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
         if (getDevelopmentGroundBonesReward(_tokenId) > 0)
             claimDevelopmentGroundBonesReward(_tokenId, false);
         if (devGround.bonesStaked > 0) removeBones(_tokenId, true);
-        Lib.removeItem(ownerToTokens[msg.sender], (_tokenId));
+        Remove.removeItem(ownerToTokens[msg.sender], (_tokenId));
         delete developmentGround[_tokenId];
         neandersmol.stakingHandler(_tokenId, false);
         emit LeaveDevelopmentGround(msg.sender, _tokenId);

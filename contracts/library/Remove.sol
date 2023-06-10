@@ -1,10 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { IPits } from "../interfaces/IPits.sol";
-import { DevelopmentGroundIsLocked } from "./Error.sol";
-
-library Lib {
+library Remove {
     function removeItem(
         uint256[] storage _element,
         uint256 _removeElement
@@ -21,9 +18,5 @@ library Lib {
                 ++i;
             }
         }
-    }
-
-    function pitsValidation(IPits _pits) internal view {
-        if (!_pits.validation()) revert DevelopmentGroundIsLocked();
     }
 }

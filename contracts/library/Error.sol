@@ -7,6 +7,7 @@ error NotAContract();
 error NotYourToken();
 error NotAuthorized();
 error WrongMultiple();
+error GroundIsLocked();
 error CannotClaimNow();
 error TokenIsStaked();
 error TransferFailed();

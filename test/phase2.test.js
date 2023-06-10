@@ -86,6 +86,8 @@ describe("test phase two", () => {
 
     await neandersmol.updateCommonSense(1, ethers.utils.parseEther("101"));
     await neandersmol.updateCommonSense(3, ethers.utils.parseEther("101"));
+    await neandersmol.updateCommonSense(20, ethers.utils.parseEther("101"));
+    await neandersmol.updateCommonSense(30, ethers.utils.parseEther("101"));
   });
 
   it("initializer checks", async () => {
@@ -319,8 +321,8 @@ describe("test phase two", () => {
       await unstakeFromPit();
       await increaseTime(24);
 
-      // const resOne = await devGrounds.getDevelopmentGroundBonesReward(1);
-      // await devGrounds.claimDevelopmentGroundBonesReward([1], [false]);
+      const resOne = await devGrounds.getDevelopmentGroundBonesReward(1);
+      await devGrounds.claimDevelopmentGroundBonesReward([1], [false]);
       const fe = await devGrounds.getDevelopmentGroundBonesReward(1);
       const info = await devGrounds.getDevelopmentGroundInfo(1);
       const daysOff = await pits.totalDaysOff();
@@ -340,9 +342,9 @@ describe("test phase two", () => {
       console.log("Reward from test", ethers.utils.formatEther(feO.toString()));
       console.log("Days off", daysOffO.toString());
       console.log("Current lock time", infoO.toString());
-      // const resTwo = await devGrounds.getDevelopmentroundBonesReward(1);
-      // console.log(resOne.toString());
-      // console.log(resTwo.toString());
+      const resTwo = await devGrounds.getDevelopmentGroundBonesReward(1);
+      console.log(resOne.toString());
+      console.log(resTwo.toString());
     });
     it("get development ground reward", async () => {
       await stakeInPit();
@@ -356,7 +358,7 @@ describe("test phase two", () => {
       await stakeInPit();
       await devGrounds.claimDevelopmentGroundBonesReward([1], [false]);
       const info = await devGrounds.getDevGroundFeInfo(owner.address);
-      console.log(info.toString());
+      // console.log(info.toString());
       // await increaseTime(48);
       // expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
       //   toWei("10")
@@ -419,7 +421,7 @@ describe("test phase two", () => {
       expect(await devGrounds.bonesToTime(1)).to.be.empty;
       expect(tx).to.emit("RemoveBones");
       const bal = (await devGrounds.getDevelopmentGroundInfo(1)).bonesStaked;
-      console.log(bal.toString());
+      // console.log(bal.toString());
     });
 
     it("get primary skill", async () => {
@@ -828,53 +830,39 @@ describe("test phase two", () => {
     await pits.stakeBonesInYard(ethers.utils.parseEther("3000000"));
   });
 
-  // it("reward function tests", async () => {
-  //   const MINIMUM = "3000000";
-  //   await bones.approve(pits.address, await bones.balanceOf(owner.address));
-  //   await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
-  //   await devGrounds.enterDevelopmentGround([1], [toDays(50)], [0]);
-  //   expect(
-  //     (await devGrounds.getDevelopmentGroundInfo(1)).currentPitsLockPeriod
-  //   ).to.equal("0");
-  //   await increaseTime(24);
-  //   expect(await pits.totalDaysOff()).to.equal("0");
-  //   expect(await pits.getTimeOut()).to.equal("0");
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-  //     toWei("10")
-  //   );
-  //   const tx = await pits.removeBonesFromYard(ethers.utils.parseEther(MINIMUM));
-  //   const time = (
-  //     await ethers.provider.getBlock((await tx.wait()).logs[0].blockNumber)
-  //   ).timestamp;
-  //   expect(await pits.getTimeOut()).to.equal(time);
+  it("test boost", async () => {
+    await stakeInPit();
+    await caves.connect(player).enterCaves([21]);
+    await bones.transfer(player.address, toWei("1000000"));
+    expect(await bones.balanceOf(player.address)).to.equal(toWei("1000000"));
+    await bones.connect(player).approve(pits.address, toWei("50000"));
+    await bones.connect(player).approve(devGrounds.address, toWei("10000"));
+    // console.log("Pits stake", await pits.getBonesStaked(player.address));
+    await neandersmol
+      .connect(player)
+      .setApprovalForAll(devGrounds.address, true);
+    await devGrounds
+      .connect(player)
+      .enterDevelopmentGround([20], [toDays(50)], [0]);
+    await devGrounds
+      .connect(player)
+      .stakeBonesInDevelopmentGround([toWei("1000")], [20]);
+    await increaseTime(24);
+    expect(await devGrounds.getDevelopmentGroundBonesReward(20)).to.equal(
+      toWei("10")
+    );
 
-  //   await increaseTime(24);
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-  //     toWei("10")
-  //   );
-  //   await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-  //     toWei("10")
-  //   );
-  //   await increaseTime(24);
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-  //     toWei("20")
-  //   );
-  //   await devGrounds.enterDevelopmentGround([3], [toDays(150)], [1]);
-  //   expect(
-  //     (await devGrounds.getDevelopmentGroundInfo(3)).currentPitsLockPeriod
-  //   ).to.equal(time);
-  //   await increaseTime(24);
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(3)).to.equal(
-  //     toWei("100")
-  //   );
-  //   console.log("Time", time);
-  //   await pits.removeBonesFromYard(ethers.utils.parseEther(MINIMUM));
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(3)).to.equal(
-  //     toWei("100")
-  //   );
-
-  // });
+    await pits.connect(player).stakeBonesInYard(toWei("9999"));
+    expect(await devGrounds.getDevelopmentGroundBonesReward(20)).to.equal(
+      toWei("11")
+    );
+    await await pits.connect(player).stakeBonesInYard(toWei("9999"));
+    expect(await devGrounds.getDevelopmentGroundBonesReward(20)).to.equal(
+      toWei("11.5")
+    );
+    expect(await caves.getCavesReward(21)).to.equal(toWei("11.5"));
+    expect(await devGrounds.getPrimarySkill(20)).to.equal(toWei("0.115"));
+  });
   it("another reward", async () => {
     const MINIMUM = "3000000";
     await bones.approve(pits.address, await bones.balanceOf(owner.address));
