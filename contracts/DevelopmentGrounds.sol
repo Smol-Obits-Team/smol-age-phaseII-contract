@@ -1,10 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import { Lib } from "./library/Lib.sol";
+import { Remove } from "./library/Remove.sol";
 import { IPits } from "./interfaces/IPits.sol";
 import { IBones } from "./interfaces/IBones.sol";
-import { IRandomizer } from "./interfaces/IRandomizer.sol";
 import { INeandersmol } from "./interfaces/INeandersmol.sol";
 import { Ownable } from "solady/src/auth/Ownable.sol";
 import { SafeTransferLib } from "solady/src/utils/SafeTransferLib.sol";
@@ -21,6 +20,7 @@ import {
     DevelopmentGround
 } from "./library/StructsEnums.sol";
 import {
+    InvalidCall,
     InvalidPos,
     NotYourToken,
     TokenIsStaked,
@@ -58,6 +58,9 @@ contract DevelopmentGrounds is Initializable, Ownable {
 
     mapping(uint256 => DevelopmentGround) private developmentGround;
 
+    uint256 public receivingPercentage;
+    uint256 public boost;
+
     uint256 private constant MINIMUM_BONE_STAKE = 1000 * 10 ** 18;
 
     function setAddress(
@@ -86,7 +89,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
         uint256 i;
         checkLength(_tokenId, _lockTime);
         if (_lockTime.length != _ground.length) revert LengthsNotEqual();
-        Lib.pitsValidation(pits);
+        if (!pits.validation()) revert DevelopmentGroundIsLocked();
         for (; i < _tokenId.length; ++i) {
             (uint256 tokenId, uint256 lockTime) = (_tokenId[i], _lockTime[i]);
             if (neandersmol.staked(tokenId)) revert TokenIsStaked();
@@ -126,7 +129,7 @@ contract DevelopmentGrounds is Initializable, Ownable {
         uint256[] calldata _amount,
         uint256[] calldata _tokenId
     ) external {
-        Lib.pitsValidation(pits);
+        if (!pits.validation()) revert DevelopmentGroundIsLocked();
         checkLength(_amount, _tokenId);
         uint256 i;
         for (; i < _amount.length; ++i) {
@@ -320,15 +323,12 @@ contract DevelopmentGrounds is Initializable, Ownable {
         DevelopmentGround memory token = developmentGround[_tokenId];
 
         return
-            Lib.calculatePrimarySkill(
+            (calculatePrimarySkill(
+                token.owner,
                 token.bonesStaked,
                 token.amountPosition,
-                token.currentPitsLockPeriod,
-                _tokenId,
-                pits,
-                trackTime,
-                trackToken
-            );
+                _tokenId
+            ) * stakedCouncilPass(token.owner)) / 100;
     }
 
     /**
@@ -340,17 +340,14 @@ contract DevelopmentGrounds is Initializable, Ownable {
     function claimDevelopmentGroundBonesReward(
         uint256 _tokenId,
         bool _stake
-    ) internal {
+    ) internal returns (uint256) {
         DevelopmentGround memory devGround = developmentGround[_tokenId];
         if (devGround.owner != msg.sender) revert NotYourToken();
         uint256 reward = getDevelopmentGroundBonesReward(_tokenId);
         if (reward == 0) revert ZeroBalanceError();
         developmentGround[_tokenId].lastRewardTime = uint64(block.timestamp);
-        _stake
-            ? stakeBonesInDevelopmentGround(_tokenId, reward)
-            : bones.mint(msg.sender, reward);
-
         emit ClaimDevelopmentGroundBonesReward(msg.sender, _tokenId, _stake);
+        return reward;
     }
 
     /**
@@ -363,9 +360,120 @@ contract DevelopmentGrounds is Initializable, Ownable {
         uint256[] calldata _tokenId,
         bool[] calldata _stake
     ) external {
+        uint256 totalReward;
         if (_tokenId.length != _stake.length) revert LengthsNotEqual();
-        for (uint256 i; i < _tokenId.length; ++i)
-            claimDevelopmentGroundBonesReward(_tokenId[i], _stake[i]);
+        for (uint256 i; i < _tokenId.length; ++i) {
+            totalReward += claimDevelopmentGroundBonesReward(
+                _tokenId[i],
+                _stake[i]
+            );
+        }
+
+        uint256 receiving = (totalReward * receivingPercentage) / 100;
+        uint256 burning = totalReward - receiving;
+        bones.mint(address(this), totalReward);
+        require(bones.transfer(msg.sender, receiving));
+        bones.burn(address(this), burning);
+    }
+
+    /**
+     * @dev Returns the DevGround Bones reward based on the lock period, last reward time, and owner's address.
+     * @param _lockPeriod The duration of the lock period.
+     * @param _lastRewardTime The timestamp of the last reward.
+     * @param _owner The address of the owner.
+     * @return The DevGround Bones reward.
+     */
+
+    function getDevGroundBonesReward(
+        uint256 _lockPeriod,
+        uint256 _lastRewardTime,
+        address _owner
+    ) internal view returns (uint256) {
+        if (_lockPeriod == 0 || _lastRewardTime == 0) return 0;
+        uint256 time = (block.timestamp - _lastRewardTime) / 1 days;
+        if (time == 0) return 0;
+        uint256 rewardRate = getRewardRate(_lockPeriod);
+        // get the bones reward and boost, return the amoun
+        return ((rewardRate * 10 ** 18 * boost) + fetchBoost(_owner)) * time;
+    }
+
+    /**
+     * @dev Calculates the primary skill based on the owner's address, staked bones, amount position, and token ID.
+     * @param _owner The address of the owner.
+     * @param _bonesStaked The amount of bones staked.
+     * @param _amountPosition The position amount.
+     * @param _tokenId The token ID.
+     * @return The calculated primary skill.
+     */
+
+    function calculatePrimarySkill(
+        address _owner,
+        uint256 _bonesStaked,
+        uint256 _amountPosition,
+        uint256 _tokenId
+    ) internal view returns (uint256) {
+        if (_bonesStaked == 0) return 0;
+        uint256 amount;
+        uint256 i = 1;
+        for (; i <= _amountPosition; ) {
+            uint256 time = (block.timestamp - trackTime[_tokenId][i]) / 1 days;
+            uint256 stakedAmount = trackToken[_tokenId][trackTime[_tokenId][i]];
+            amount += (time * (stakedAmount));
+            unchecked {
+                ++i;
+            }
+        }
+
+        return ((amount / 10 ** 4) +
+            (amount / 10 ** 21) *
+            (fetchBoost(_owner) / 100));
+    }
+
+    /**
+     * @dev Retrieves the boost based on the owner's address.
+     * @param _owner The address of the owner.
+     * @return b The boost value.
+     */
+
+    function fetchBoost(address _owner) internal view returns (uint256 b) {
+        uint256 stakedBones = pits.getBonesStaked(_owner);
+        if (stakedBones < 5000 ether) return 0;
+        if (stakedBones < 10000 ether) {
+            return 1 ether;
+        } else if (stakedBones < 20000 ether) {
+            return 1.5 ether;
+        } else if (stakedBones < 30000 ether) {
+            return 2 ether;
+        } else if (stakedBones < 40000 ether) {
+            return 2.5 ether;
+        } else if (stakedBones < 50000 ether) {
+            return 3 ether;
+        } else if (stakedBones < 100000 ether) {
+            return 3.5 ether;
+        } else if (stakedBones < 250000 ether) {
+            return 4 ether;
+        } else if (stakedBones < 500000 ether) {
+            return 4.5 ether;
+        } else if (stakedBones > 499999 ether) {
+            return 5 ether;
+        }
+    }
+
+    function stakedCouncilPass(address _owner) internal view returns (uint256) {
+        (bool ok, bytes memory data) = address(pits).staticcall(
+            abi.encodeWithSignature("getPassMultiplier(address)", _owner)
+        );
+        if (ok) return abi.decode(data, (uint256));
+
+        revert InvalidCall();
+    }
+
+    function getRewardRate(
+        uint256 _lockTime
+    ) internal pure returns (uint256 rewardRate) {
+        if (_lockTime == 50 days) rewardRate = 10;
+        if (_lockTime == 100 days) rewardRate = 50;
+        if (_lockTime == 150 days) rewardRate = 100;
     }
 
     /**
@@ -400,13 +508,13 @@ contract DevelopmentGrounds is Initializable, Ownable {
         uint256 _tokenId
     ) public view returns (uint256) {
         DevelopmentGround memory devGround = developmentGround[_tokenId];
+
         return
-            Lib.getDevGroundBonesReward(
-                devGround.currentPitsLockPeriod,
+            (getDevGroundBonesReward(
                 devGround.lockPeriod,
                 devGround.lastRewardTime,
-                pits
-            );
+                devGround.owner
+            ) * stakedCouncilPass(devGround.owner)) / 100;
     }
 
     /**
@@ -415,8 +523,15 @@ contract DevelopmentGrounds is Initializable, Ownable {
      */
 
     function leaveDevelopmentGround(uint256[] calldata _tokenId) external {
-        for (uint256 i; i < _tokenId.length; ++i)
-            leaveDevelopmentGround(_tokenId[i]);
+        uint256 totalReward;
+        for (uint256 i; i < _tokenId.length; ++i) {
+            totalReward += leaveDevelopmentGround(_tokenId[i]);
+        }
+        uint256 receiving = (totalReward * receivingPercentage) / 100;
+        uint256 burning = totalReward - receiving;
+        bones.mint(address(this), totalReward);
+        require(bones.transfer(msg.sender, receiving));
+        bones.burn(address(this), burning);
     }
 
     /**
@@ -424,18 +539,25 @@ contract DevelopmentGrounds is Initializable, Ownable {
      * @param _tokenId The token ID of the development ground to leave.
      */
 
-    function leaveDevelopmentGround(uint256 _tokenId) internal {
+    function leaveDevelopmentGround(
+        uint256 _tokenId
+    ) internal returns (uint256) {
+        uint256 reward;
         DevelopmentGround memory devGround = developmentGround[_tokenId];
         if (devGround.owner != msg.sender) revert NotYourToken();
         if (block.timestamp < devGround.entryTime + devGround.lockPeriod)
             revert NeandersmolsIsLocked();
-        if (getDevelopmentGroundBonesReward(_tokenId) > 0)
-            claimDevelopmentGroundBonesReward(_tokenId, false);
+        if (getPrimarySkill(_tokenId) > 0) developPrimarySkill(_tokenId);
+        if (getDevelopmentGroundBonesReward(_tokenId) > 0) {
+            reward = claimDevelopmentGroundBonesReward(_tokenId, false);
+        }
+
         if (devGround.bonesStaked > 0) removeBones(_tokenId, true);
-        Lib.removeItem(ownerToTokens[msg.sender], (_tokenId));
+        Remove.removeItem(ownerToTokens[msg.sender], (_tokenId));
         delete developmentGround[_tokenId];
         neandersmol.stakingHandler(_tokenId, false);
         emit LeaveDevelopmentGround(msg.sender, _tokenId);
+        return reward;
     }
 
     /**
@@ -487,6 +609,14 @@ contract DevelopmentGrounds is Initializable, Ownable {
         );
 
         return seed;
+    }
+
+    function setPercentage(uint256 _receivingPercentage) external onlyOwner {
+        receivingPercentage = _receivingPercentage;
+    }
+
+    function setBoost(uint256 _boost) external onlyOwner {
+        boost = _boost;
     }
 
     function lockTimeExists(uint256 _lockTime) internal pure returns (bool) {

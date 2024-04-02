@@ -55,13 +55,6 @@ struct LaborGroundFeInfo {
     uint64 supplyId;
 }
 
-/**
- * token id
- * bones occured
- * primary skill level
- * days left
- */
-
 enum Jobs {
     Digging,
     Foraging,

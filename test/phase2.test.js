@@ -15,7 +15,8 @@ describe("test phase two", () => {
     treasure,
     magic,
     randomizer,
-    consumables;
+    consumables,
+    pass;
 
   const INITIAL_SUPPLY = 10_000_000;
 
@@ -52,6 +53,7 @@ describe("test phase two", () => {
     supplies = await ethers.getContract("Supplies");
     consumables = await ethers.getContract("Consumables");
     treasure = await ethers.getContract("mERC1155");
+    pass = await ethers.getContract("mERC1155");
     magic = await ethers.getContract("mERC20");
     randomizer = await ethers.getContract("Randomizer");
 
@@ -80,12 +82,16 @@ describe("test phase two", () => {
       .connect(player)
       .publicMint(17, { value: ethers.utils.parseEther("0.34") });
 
+    await pass.mintPass(1);
+
     await bones.approve(supplies.address, balance);
     await magic.approve(supplies.address, balance);
     await treasure.setApprovalForAll(supplies.address, true);
 
     await neandersmol.updateCommonSense(1, ethers.utils.parseEther("101"));
     await neandersmol.updateCommonSense(3, ethers.utils.parseEther("101"));
+    await neandersmol.updateCommonSense(20, ethers.utils.parseEther("101"));
+    await neandersmol.updateCommonSense(30, ethers.utils.parseEther("101"));
   });
 
   it("initializer checks", async () => {
@@ -161,11 +167,11 @@ describe("test phase two", () => {
       const txr = await pits.removeBonesFromYard(toWei("1000"));
       const txR = await txr.wait();
       const blockB = await ethers.provider.getBlock(txR.logs[0].blockNumber);
-      expect(await pits.timeOut()).to.equal(blockB.timestamp);
+      expect(await pits.timeOut()).to.equal("0");
       await increaseTime(24);
       await pits.stakeBonesInYard(toWei("1200"));
-      expect(await pits.getDaysOff(blockB.timestamp)).to.equal("1");
-      expect(await pits.totalDaysOff()).to.equal("1");
+      expect(await pits.getDaysOff(blockB.timestamp)).to.equal("0");
+      expect(await pits.totalDaysOff()).to.equal("0");
     });
   });
 
@@ -272,7 +278,7 @@ describe("test phase two", () => {
         txRes.logs[0].blockNumber
       );
       expect(await bones.totalSupply()).to.equal(
-        toWei((INITIAL_SUPPLY + 10).toString())
+        toWei((INITIAL_SUPPLY + 15).toString())
       );
       expect(
         (await devGrounds.getDevelopmentGroundInfo(1)).lastRewardTime
@@ -294,11 +300,11 @@ describe("test phase two", () => {
         (await devGrounds.getDevelopmentGroundInfo(3)).bonesStaked
       ).to.equal(toWei("1000"));
       expect(await bones.totalSupply()).to.equal(
-        toWei((INITIAL_SUPPLY + 1310).toString())
+        toWei((INITIAL_SUPPLY + 1380).toString())
       );
 
       expect(await bones.balanceOf(owner.address)).to.equal(
-        balance.add(toWei("300"))
+        balance.add(toWei("365"))
       );
 
       await increaseTime(24 * 10);
@@ -319,8 +325,8 @@ describe("test phase two", () => {
       await unstakeFromPit();
       await increaseTime(24);
 
-      // const resOne = await devGrounds.getDevelopmentGroundBonesReward(1);
-      // await devGrounds.claimDevelopmentGroundBonesReward([1], [false]);
+      const resOne = await devGrounds.getDevelopmentGroundBonesReward(1);
+      await devGrounds.claimDevelopmentGroundBonesReward([1], [false]);
       const fe = await devGrounds.getDevelopmentGroundBonesReward(1);
       const info = await devGrounds.getDevelopmentGroundInfo(1);
       const daysOff = await pits.totalDaysOff();
@@ -340,23 +346,23 @@ describe("test phase two", () => {
       console.log("Reward from test", ethers.utils.formatEther(feO.toString()));
       console.log("Days off", daysOffO.toString());
       console.log("Current lock time", infoO.toString());
-      // const resTwo = await devGrounds.getDevelopmentroundBonesReward(1);
-      // console.log(resOne.toString());
-      // console.log(resTwo.toString());
+      const resTwo = await devGrounds.getDevelopmentGroundBonesReward(1);
+      console.log(resOne.toString());
+      console.log(resTwo.toString());
     });
     it("get development ground reward", async () => {
       await stakeInPit();
       await devGrounds.enterDevelopmentGround([1], [toDays(50)], [1]);
       await increaseTime(24);
       expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-        toWei("10")
+        toWei("15")
       );
       await unstakeFromPit();
       await increaseTime(24);
       await stakeInPit();
       await devGrounds.claimDevelopmentGroundBonesReward([1], [false]);
       const info = await devGrounds.getDevGroundFeInfo(owner.address);
-      console.log(info.toString());
+      // console.log(info.toString());
       // await increaseTime(48);
       // expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
       //   toWei("10")
@@ -379,10 +385,11 @@ describe("test phase two", () => {
       await increaseTime(100 * 24);
       await devGrounds.claimDevelopmentGroundBonesReward([1], [true]);
       const bal = await bones.balanceOf(owner.address);
+
       await increaseTime(30 * 24);
       const tx = await devGrounds.leaveDevelopmentGround([1]);
       expect(await bones.balanceOf(owner.address)).to.equal(
-        bal.add(toWei("1300"))
+        bal.add(toWei("1450"))
       );
       expect(await devGrounds.getStakedTokens(owner.address)).to.be.an("array")
         .that.is.empty;
@@ -418,7 +425,7 @@ describe("test phase two", () => {
       expect(await devGrounds.bonesToTime(1)).to.be.empty;
       expect(tx).to.emit("RemoveBones");
       const bal = (await devGrounds.getDevelopmentGroundInfo(1)).bonesStaked;
-      console.log(bal.toString());
+      // console.log(bal.toString());
     });
 
     it("get primary skill", async () => {
@@ -435,21 +442,21 @@ describe("test phase two", () => {
         [1, 3, 10]
       );
       await increaseTime(24);
-      expect(await devGrounds.getPrimarySkill(1)).to.equal(toWei("0.1"));
+      expect(await devGrounds.getPrimarySkill(1)).to.equal(toWei("0.15"));
       await unstakeFromPit();
       await increaseTime(72);
-      expect(await devGrounds.getPrimarySkill(1)).to.equal(toWei("0.4"));
+      expect(await devGrounds.getPrimarySkill(1)).to.equal(toWei("0.6"));
       await stakeInPit();
       await increaseTime(72);
-      expect(await devGrounds.getPrimarySkill(1)).to.equal(toWei("0.7"));
+      expect(await devGrounds.getPrimarySkill(1)).to.equal(toWei("1.05"));
       await increaseTime(23 * 24);
       await devGrounds.removeBones([1, 3, 10], [true, true, true]);
       const [mystics, ,] = await neandersmol.getPrimarySkill(1);
-      expect(mystics).to.equal(toWei("3.0"));
+      expect(mystics).to.equal(toWei("4.5"));
       const [, farmers] = await neandersmol.getPrimarySkill(3);
-      expect(farmers).to.equal(toWei("3.0"));
+      expect(farmers).to.equal(toWei("4.5"));
       const [, , fighters] = await neandersmol.getPrimarySkill(10);
-      expect(fighters).to.equal(toWei("3.0"));
+      expect(fighters).to.equal(toWei("4.5"));
     });
     it("unstake single bones", async () => {
       await stakeInPit();
@@ -506,8 +513,8 @@ describe("test phase two", () => {
       const res = await devGrounds.getDevGroundFeInfo(owner.address);
       expect(res[1].timeLeft.toString()).to.equal("148");
       expect(res[0].daysStaked.toString()).to.be.equal("86401");
-      expect(res[1].skillLevel.toString()).to.equal(toWei("0.1"));
-      expect(res[0].bonesAccured.toString()).to.equal(toWei("10"));
+      expect(res[1].skillLevel.toString()).to.equal(toWei("0.15"));
+      expect(res[0].bonesAccured.toString()).to.equal(toWei("15"));
       expect(res[1].ground).to.equal(1);
       expect(res[0].totalBonesStaked).to.equal(toWei("1000"));
       expect(res[1].totalBonesStaked).to.equal(toWei("1000"));
@@ -689,12 +696,12 @@ describe("test phase two", () => {
       await stakeInPit();
       await caves.enterCaves([1]);
       await increaseTime(24);
-      expect(await caves.getCavesReward(1)).to.equal(toWei("10"));
+      expect(await caves.getCavesReward(1)).to.equal(toWei("15"));
       await caves.enterCaves([2]);
-      expect(await caves.getCavesReward(1)).to.equal(toWei("10"));
+      expect(await caves.getCavesReward(1)).to.equal(toWei("15"));
       await increaseTime(24);
-      expect(await caves.getCavesReward(1)).to.equal(toWei("20"));
-      expect(await caves.getCavesReward(2)).to.equal(toWei("10"));
+      expect(await caves.getCavesReward(1)).to.equal(toWei("30"));
+      expect(await caves.getCavesReward(2)).to.equal(toWei("15"));
     });
     it("claim cave rewards", async () => {
       await stakeInPit();
@@ -710,12 +717,12 @@ describe("test phase two", () => {
       );
       expect((await caves.getCavesInfo(1))[2]).to.equal(blockBefore.timestamp);
       expect(await bones.totalSupply()).to.equal(
-        toWei((INITIAL_SUPPLY + 10).toString())
+        toWei((INITIAL_SUPPLY + 15).toString())
       );
       await increaseTime(24 * 9);
       await caves.claimCaveReward([1]);
       expect(await bones.totalSupply()).to.equal(
-        toWei((INITIAL_SUPPLY + 100).toString())
+        toWei((INITIAL_SUPPLY + 150).toString())
       );
     });
     it("leave cave", async () => {
@@ -731,7 +738,7 @@ describe("test phase two", () => {
       expect(info.owner).to.equal("0x0000000000000000000000000000000000000000");
       expect(info.lastRewardTimestamp).to.equal(0);
       expect(await bones.totalSupply()).to.equal(
-        toWei((INITIAL_SUPPLY + 1000).toString())
+        toWei((INITIAL_SUPPLY + 1500).toString())
       );
       await stakeInPit();
       await caves.enterCaves([1]);
@@ -749,7 +756,7 @@ describe("test phase two", () => {
       const res = await caves.getCavesFeInfo(owner.address);
       expect(res[0].stakedSmols).to.equal(2);
       expect(res[0].timeLeft).to.equal(86400);
-      expect(res[0].reward).to.equal(ethers.utils.parseEther("990"));
+      expect(res[0].reward).to.equal(ethers.utils.parseEther("1485"));
     });
   });
 
@@ -820,60 +827,46 @@ describe("test phase two", () => {
     const tie = (await ethers.provider.getBlock(txRO.logs[0].blockNumber))
       .timestamp;
     expect(await pits.validation()).to.be.false;
-    expect(await pits.timeOut()).to.equal(tie);
+    expect(await pits.timeOut()).to.equal(0);
     await increaseTime(24);
     await pits.stakeBonesInYard(ethers.utils.parseEther("300000"));
     await increaseTime(24);
     await pits.stakeBonesInYard(ethers.utils.parseEther("3000000"));
   });
 
-  // it("reward function tests", async () => {
-  //   const MINIMUM = "3000000";
-  //   await bones.approve(pits.address, await bones.balanceOf(owner.address));
-  //   await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
-  //   await devGrounds.enterDevelopmentGround([1], [toDays(50)], [0]);
-  //   expect(
-  //     (await devGrounds.getDevelopmentGroundInfo(1)).currentPitsLockPeriod
-  //   ).to.equal("0");
-  //   await increaseTime(24);
-  //   expect(await pits.totalDaysOff()).to.equal("0");
-  //   expect(await pits.getTimeOut()).to.equal("0");
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-  //     toWei("10")
-  //   );
-  //   const tx = await pits.removeBonesFromYard(ethers.utils.parseEther(MINIMUM));
-  //   const time = (
-  //     await ethers.provider.getBlock((await tx.wait()).logs[0].blockNumber)
-  //   ).timestamp;
-  //   expect(await pits.getTimeOut()).to.equal(time);
+  it("test boost", async () => {
+    await stakeInPit();
+    await caves.connect(player).enterCaves([21]);
+    await bones.transfer(player.address, toWei("1000000"));
+    expect(await bones.balanceOf(player.address)).to.equal(toWei("1000000"));
+    await bones.connect(player).approve(pits.address, toWei("50000"));
+    await bones.connect(player).approve(devGrounds.address, toWei("10000"));
+    // console.log("Pits stake", await pits.getBonesStaked(player.address));
+    await neandersmol
+      .connect(player)
+      .setApprovalForAll(devGrounds.address, true);
+    await devGrounds
+      .connect(player)
+      .enterDevelopmentGround([20], [toDays(50)], [0]);
+    await devGrounds
+      .connect(player)
+      .stakeBonesInDevelopmentGround([toWei("1000")], [20]);
+    await increaseTime(24);
+    expect(await devGrounds.getDevelopmentGroundBonesReward(20)).to.equal(
+      toWei("10")
+    );
 
-  //   await increaseTime(24);
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-  //     toWei("10")
-  //   );
-  //   await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-  //     toWei("10")
-  //   );
-  //   await increaseTime(24);
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-  //     toWei("20")
-  //   );
-  //   await devGrounds.enterDevelopmentGround([3], [toDays(150)], [1]);
-  //   expect(
-  //     (await devGrounds.getDevelopmentGroundInfo(3)).currentPitsLockPeriod
-  //   ).to.equal(time);
-  //   await increaseTime(24);
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(3)).to.equal(
-  //     toWei("100")
-  //   );
-  //   console.log("Time", time);
-  //   await pits.removeBonesFromYard(ethers.utils.parseEther(MINIMUM));
-  //   expect(await devGrounds.getDevelopmentGroundBonesReward(3)).to.equal(
-  //     toWei("100")
-  //   );
-
-  // });
+    await pits.connect(player).stakeBonesInYard(toWei("9999"));
+    expect(await devGrounds.getDevelopmentGroundBonesReward(20)).to.equal(
+      toWei("11")
+    );
+    await await pits.connect(player).stakeBonesInYard(toWei("9999"));
+    expect(await devGrounds.getDevelopmentGroundBonesReward(20)).to.equal(
+      toWei("11.5")
+    );
+    expect(await caves.getCavesReward(21)).to.equal(toWei("11.5"));
+    expect(await devGrounds.getPrimarySkill(20)).to.equal(toWei("0.115"));
+  });
   it("another reward", async () => {
     const MINIMUM = "3000000";
     await bones.approve(pits.address, await bones.balanceOf(owner.address));
@@ -886,12 +879,86 @@ describe("test phase two", () => {
     expect(await pits.totalDaysOff()).to.equal("0");
     expect(await pits.getTimeOut()).to.equal("0");
     expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
-      toWei("10")
+      toWei("15")
     );
-    const tx = await pits.removeBonesFromYard(ethers.utils.parseEther(MINIMUM));
-    const time = (
-      await ethers.provider.getBlock((await tx.wait()).logs[0].blockNumber)
-    ).timestamp;
-    expect(await pits.getTimeOut()).to.equal(time);
+    await pits.removeBonesFromYard(ethers.utils.parseEther(MINIMUM));
+  });
+
+  it("fix bug", async () => {
+    const MINIMUM = "3000000";
+    await bones.approve(pits.address, await bones.balanceOf(owner.address));
+    await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
+    await neandersmol.transferFrom(owner.address, player.address, 1);
+    await bones.transfer(player.address, toWei("3000"));
+    await bones.connect(player).approve(devGrounds.address, toWei("3000"));
+
+    await devGrounds
+      .connect(player)
+      .enterDevelopmentGround([1], [toDays(50)], [0]);
+
+    const tx = await devGrounds
+      .connect(player)
+      .stakeBonesInDevelopmentGround([toWei("3000")], [1]);
+    await increaseTime(50 * 24);
+    await devGrounds.connect(player).leaveDevelopmentGround([1]);
+    const [mystics, ,] = await neandersmol.getPrimarySkill(1);
+    expect(mystics).to.equal(ethers.utils.parseEther("15"));
+  });
+
+  it("test burn", async () => {
+    const MINIMUM = "3000000";
+    await devGrounds.setBoost(5);
+    await bones.approve(pits.address, await bones.balanceOf(owner.address));
+    await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
+    await neandersmol.transferFrom(owner.address, player.address, 1);
+    await bones.transfer(player.address, toWei("3000"));
+    await bones.connect(player).approve(devGrounds.address, toWei("3000"));
+
+    await devGrounds
+      .connect(player)
+      .enterDevelopmentGround([20], [toDays(100)], [0]);
+
+    await increaseTime(1 * 24);
+    await devGrounds.setPercentage(80);
+    await devGrounds
+      .connect(player)
+      .claimDevelopmentGroundBonesReward([20], [false]);
+  });
+  it("test staked pass in dev ground", async () => {
+    await pits.setPassBoost(150);
+    await pits.setPassAddress(pass.address);
+    await pass.setApprovalForAll(pits.address, true);
+    await pits.stakePass();
+    expect(await pits.staked(owner.address)).to.equal(true);
+    const MINIMUM = "3000000";
+    await devGrounds.setBoost(5);
+    await bones.approve(pits.address, await bones.balanceOf(owner.address));
+    await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
+    await devGrounds.enterDevelopmentGround([1], [toDays(100)], [1]);
+    await increaseTime(24);
+    // 50 * 5
+    expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
+      toWei("382.5")
+    );
+
+    await devGrounds.stakeBonesInDevelopmentGround([toWei("3000")], [1]);
+    await increaseTime(24);
+    const res = await devGrounds.getDevGroundFeInfo(owner.address);
+    expect(res[0].skillLevel.toString()).to.equal(toWei("0.675"));
+  });
+  it("test staked pass in caves", async () => {
+    await pits.setPassBoost(150);
+    await pits.setPassAddress(pass.address);
+    await pass.setApprovalForAll(pits.address, true);
+    await pits.stakePass();
+    expect(await pits.staked(owner.address)).to.equal(true);
+    const MINIMUM = "3000000";
+    await bones.approve(pits.address, await bones.balanceOf(owner.address));
+    await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
+    await caves.enterCaves([1]);
+    await increaseTime(25);
+    await caves.setMultiplierAmount(5);
+    expect(await caves.getCavesReward(1)).to.equal(toWei("112.5"));
   });
 });
+// 25000000000000000000000
