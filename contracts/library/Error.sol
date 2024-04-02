@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+error InvalidCall();
 error CsToHigh();
 error InvalidPos();
 error NotAContract();
@@ -21,4 +22,6 @@ error NeandersmolsIsLocked();
 error BalanceIsInsufficient();
 error InvalidTokenForThisJob();
 error DevelopmentGroundIsLocked();
+error NoActiveStakeError();
+error ActiveStakeError();
 error NeandersmolIsNotInDevelopmentGround();

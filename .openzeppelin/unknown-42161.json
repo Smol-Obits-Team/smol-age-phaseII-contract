@@ -1,0 +1,435 @@
+{
+  "manifestVersion": "3.2",
+  "admin": {
+    "address": "0x84bc63F8484b15e335a72f310b415ceFc116Af05"
+  },
+  "proxies": [
+    {
+      "address": "0xbE342A5836E820d0a3f0AcbF28D8e7822328A7d8",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "6ee419c0c4a0087c5eb3bb5f64c41b730a8f98decffcb8317d5a70932b00c2fb": {
+      "address": "0xD82d7eb9a9825ABdF4E282079e97a162C7fEa63F",
+      "layout": {
+        "solcVersion": "0.8.18",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "bones",
+            "offset": 2,
+            "slot": "0",
+            "type": "t_contract(IBones)14315",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGroundsOld.sol:38"
+          },
+          {
+            "label": "pits",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_contract(IPits)14417",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGroundsOld.sol:39"
+          },
+          {
+            "label": "neandersmol",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_contract(INeandersmol)14380",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGroundsOld.sol:40"
+          },
+          {
+            "label": "trackTime",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_uint256,t_mapping(t_uint256,t_uint256))",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGroundsOld.sol:52"
+          },
+          {
+            "label": "trackToken",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_uint256,t_mapping(t_uint256,t_uint256))",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGroundsOld.sol:54"
+          },
+          {
+            "label": "ownerToTokens",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGroundsOld.sol:56"
+          },
+          {
+            "label": "developmentGround",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint256,t_struct(DevelopmentGround)14656_storage)",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGroundsOld.sol:58"
+          },
+          {
+            "label": "receivingPercentage",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_uint256",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGroundsOld.sol:60"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IBones)14315": {
+            "label": "contract IBones",
+            "numberOfBytes": "20"
+          },
+          "t_contract(INeandersmol)14380": {
+            "label": "contract INeandersmol",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPits)14417": {
+            "label": "contract IPits",
+            "numberOfBytes": "20"
+          },
+          "t_enum(Grounds)14722": {
+            "label": "enum Grounds",
+            "members": [
+              "Chambers",
+              "Garden",
+              "Battlefield"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+            "label": "mapping(address => uint256[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_uint256,t_uint256))": {
+            "label": "mapping(uint256 => mapping(uint256 => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(DevelopmentGround)14656_storage)": {
+            "label": "mapping(uint256 => struct DevelopmentGround)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(DevelopmentGround)14656_storage": {
+            "label": "struct DevelopmentGround",
+            "members": [
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "lockPeriod",
+                "type": "t_uint64",
+                "offset": 20,
+                "slot": "0"
+              },
+              {
+                "label": "amountPosition",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "entryTime",
+                "type": "t_uint64",
+                "offset": 8,
+                "slot": "1"
+              },
+              {
+                "label": "lastRewardTime",
+                "type": "t_uint64",
+                "offset": 16,
+                "slot": "1"
+              },
+              {
+                "label": "bonesStaked",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "currentPitsLockPeriod",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "ground",
+                "type": "t_enum(Grounds)14722",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    },
+    "67bbcb1a934e11217062edbe79507f602c1d3148ded1c7aba35db1cdc03634ed": {
+      "address": "0xa1c08edBE91d1305d87f556AE9283635E41120Ad",
+      "txHash": "0xa2cb27c4a0701a0da3a65f8b432df8b0ee408a6c09b5ff88360edd471060895a",
+      "layout": {
+        "solcVersion": "0.8.18",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:62",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:67"
+          },
+          {
+            "label": "bones",
+            "offset": 2,
+            "slot": "0",
+            "type": "t_contract(IBones)14315",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:38"
+          },
+          {
+            "label": "pits",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_contract(IPits)14417",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:39"
+          },
+          {
+            "label": "neandersmol",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_contract(INeandersmol)14380",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:40"
+          },
+          {
+            "label": "trackTime",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_uint256,t_mapping(t_uint256,t_uint256))",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:52"
+          },
+          {
+            "label": "trackToken",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_mapping(t_uint256,t_mapping(t_uint256,t_uint256))",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:54"
+          },
+          {
+            "label": "ownerToTokens",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_mapping(t_address,t_array(t_uint256)dyn_storage)",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:56"
+          },
+          {
+            "label": "developmentGround",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_mapping(t_uint256,t_struct(DevelopmentGround)14656_storage)",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:58"
+          },
+          {
+            "label": "receivingPercentage",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_uint256",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:60"
+          },
+          {
+            "label": "boost",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_uint256",
+            "contract": "DevelopmentGrounds",
+            "src": "contracts/DevelopmentGrounds.sol:61"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)dyn_storage": {
+            "label": "uint256[]",
+            "numberOfBytes": "32"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(IBones)14315": {
+            "label": "contract IBones",
+            "numberOfBytes": "20"
+          },
+          "t_contract(INeandersmol)14380": {
+            "label": "contract INeandersmol",
+            "numberOfBytes": "20"
+          },
+          "t_contract(IPits)14417": {
+            "label": "contract IPits",
+            "numberOfBytes": "20"
+          },
+          "t_enum(Grounds)14722": {
+            "label": "enum Grounds",
+            "members": [
+              "Chambers",
+              "Garden",
+              "Battlefield"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_array(t_uint256)dyn_storage)": {
+            "label": "mapping(address => uint256[])",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_uint256,t_uint256))": {
+            "label": "mapping(uint256 => mapping(uint256 => uint256))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(DevelopmentGround)14656_storage)": {
+            "label": "mapping(uint256 => struct DevelopmentGround)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_uint256)": {
+            "label": "mapping(uint256 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(DevelopmentGround)14656_storage": {
+            "label": "struct DevelopmentGround",
+            "members": [
+              {
+                "label": "owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "lockPeriod",
+                "type": "t_uint64",
+                "offset": 20,
+                "slot": "0"
+              },
+              {
+                "label": "amountPosition",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "entryTime",
+                "type": "t_uint64",
+                "offset": 8,
+                "slot": "1"
+              },
+              {
+                "label": "lastRewardTime",
+                "type": "t_uint64",
+                "offset": 16,
+                "slot": "1"
+              },
+              {
+                "label": "bonesStaked",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "currentPitsLockPeriod",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "ground",
+                "type": "t_enum(Grounds)14722",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        }
+      }
+    }
+  }
+}

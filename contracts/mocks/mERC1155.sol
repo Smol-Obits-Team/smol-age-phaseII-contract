@@ -16,6 +16,10 @@ contract mERC1155 is ERC1155BurnableUpgradeable {
         _mint(msg.sender, 1, _amount, "");
     }
 
+       function mintPass(uint256 _amount) external {
+        _mint(msg.sender, 0, _amount, "");
+    }
+
     function burn(address account, uint256 id, uint256 value) public override {
         super.burn(account, id, value);
     }

@@ -15,7 +15,8 @@ describe("test phase two", () => {
     treasure,
     magic,
     randomizer,
-    consumables;
+    consumables,
+    pass;
 
   const INITIAL_SUPPLY = 10_000_000;
 
@@ -52,6 +53,7 @@ describe("test phase two", () => {
     supplies = await ethers.getContract("Supplies");
     consumables = await ethers.getContract("Consumables");
     treasure = await ethers.getContract("mERC1155");
+    pass = await ethers.getContract("mERC1155");
     magic = await ethers.getContract("mERC20");
     randomizer = await ethers.getContract("Randomizer");
 
@@ -79,6 +81,8 @@ describe("test phase two", () => {
     await neandersmol
       .connect(player)
       .publicMint(17, { value: ethers.utils.parseEther("0.34") });
+
+    await pass.mintPass(1);
 
     await bones.approve(supplies.address, balance);
     await magic.approve(supplies.address, balance);
@@ -879,4 +883,82 @@ describe("test phase two", () => {
     );
     await pits.removeBonesFromYard(ethers.utils.parseEther(MINIMUM));
   });
+
+  it("fix bug", async () => {
+    const MINIMUM = "3000000";
+    await bones.approve(pits.address, await bones.balanceOf(owner.address));
+    await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
+    await neandersmol.transferFrom(owner.address, player.address, 1);
+    await bones.transfer(player.address, toWei("3000"));
+    await bones.connect(player).approve(devGrounds.address, toWei("3000"));
+
+    await devGrounds
+      .connect(player)
+      .enterDevelopmentGround([1], [toDays(50)], [0]);
+
+    const tx = await devGrounds
+      .connect(player)
+      .stakeBonesInDevelopmentGround([toWei("3000")], [1]);
+    await increaseTime(50 * 24);
+    await devGrounds.connect(player).leaveDevelopmentGround([1]);
+    const [mystics, ,] = await neandersmol.getPrimarySkill(1);
+    expect(mystics).to.equal(ethers.utils.parseEther("15"));
+  });
+
+  it("test burn", async () => {
+    const MINIMUM = "3000000";
+    await devGrounds.setBoost(5);
+    await bones.approve(pits.address, await bones.balanceOf(owner.address));
+    await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
+    await neandersmol.transferFrom(owner.address, player.address, 1);
+    await bones.transfer(player.address, toWei("3000"));
+    await bones.connect(player).approve(devGrounds.address, toWei("3000"));
+
+    await devGrounds
+      .connect(player)
+      .enterDevelopmentGround([20], [toDays(100)], [0]);
+
+    await increaseTime(1 * 24);
+    await devGrounds.setPercentage(80);
+    await devGrounds
+      .connect(player)
+      .claimDevelopmentGroundBonesReward([20], [false]);
+  });
+  it("test staked pass in dev ground", async () => {
+    await pits.setPassBoost(150);
+    await pits.setPassAddress(pass.address);
+    await pass.setApprovalForAll(pits.address, true);
+    await pits.stakePass();
+    expect(await pits.staked(owner.address)).to.equal(true);
+    const MINIMUM = "3000000";
+    await devGrounds.setBoost(5);
+    await bones.approve(pits.address, await bones.balanceOf(owner.address));
+    await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
+    await devGrounds.enterDevelopmentGround([1], [toDays(100)], [1]);
+    await increaseTime(24);
+    // 50 * 5
+    expect(await devGrounds.getDevelopmentGroundBonesReward(1)).to.equal(
+      toWei("382.5")
+    );
+
+    await devGrounds.stakeBonesInDevelopmentGround([toWei("3000")], [1]);
+    await increaseTime(24);
+    const res = await devGrounds.getDevGroundFeInfo(owner.address);
+    expect(res[0].skillLevel.toString()).to.equal(toWei("0.675"));
+  });
+  it("test staked pass in caves", async () => {
+    await pits.setPassBoost(150);
+    await pits.setPassAddress(pass.address);
+    await pass.setApprovalForAll(pits.address, true);
+    await pits.stakePass();
+    expect(await pits.staked(owner.address)).to.equal(true);
+    const MINIMUM = "3000000";
+    await bones.approve(pits.address, await bones.balanceOf(owner.address));
+    await pits.stakeBonesInYard(ethers.utils.parseEther(MINIMUM));
+    await caves.enterCaves([1]);
+    await increaseTime(25);
+    await caves.setMultiplierAmount(5);
+    expect(await caves.getCavesReward(1)).to.equal(toWei("112.5"));
+  });
 });
+// 25000000000000000000000
