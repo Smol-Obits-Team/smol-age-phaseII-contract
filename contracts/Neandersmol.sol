@@ -42,6 +42,8 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     mapping(uint256 => bool) public staked;
     mapping(uint256 => uint256) public commonSense;
 
+    mapping(uint256 => string) private tokenNickname;
+
     mapping(address => bool) private minted;
     mapping(address => uint256) private publicMinted;
 
@@ -50,6 +52,7 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
     event uriUpdate(string newURI);
 
     event commonSenseUpdated(uint256 tokenId, uint256 commonSense);
+    event NicknameUpdated(uint256 indexed tokenId, string name);
 
     function initialize() public initializer {
         __ERC721_init("Neander Smol", "NeanderSmol");
@@ -158,6 +161,25 @@ contract NeanderSmol is ContractControl, ERC721EnumerableUpgradeable {
         uint256 _tokenId
     ) external view returns (PrimarySkill memory) {
         return tokenToSkill[_tokenId];
+    }
+
+    function setNickname(uint256 tokenId, string calldata name) external {
+        require(ownerOf(tokenId) == msg.sender, "Not token owner");
+        tokenNickname[tokenId] = name;
+        emit NicknameUpdated(tokenId, name);
+    }
+
+    function getNickname(uint256 tokenId) external view returns (string memory) {
+        return tokenNickname[tokenId];
+    }
+
+    function tokenURINickname(uint256 tokenId) external view returns (string memory) {
+        string memory uri = tokenURI(tokenId);
+        string memory nickname = tokenNickname[tokenId];
+        if (bytes(nickname).length > 0) {
+            return string(abi.encodePacked(uri, "?nickname=", nickname));
+        }
+        return uri;
     }
 
     function _baseURI() internal view override returns (string memory) {
